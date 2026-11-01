@@ -1,13 +1,21 @@
+import { appendFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { env } from "@/env";
 
 export type EmailMessage = { to: string; subject: string; text: string };
 
 /**
- * Transactional email. No provider is chosen yet (Resend or SMTP, TRD section 11),
- * so without EMAIL_SERVER_URL the message is printed to the server console in
- * development and the call fails in production. Never log this output in production.
+ * Transactional email. No provider is chosen yet (Resend or SMTP, TRD section 11).
+ * Order: EMAIL_DEV_OUTBOX (dev/test file sink, refused by env.ts when ENV_STRICT=true),
+ * then, without EMAIL_SERVER_URL, a console line in development and a thrown error in production.
+ * Never log this output in production.
  */
 export async function sendEmail(message: EmailMessage): Promise<void> {
+  if (env.EMAIL_DEV_OUTBOX) {
+    await mkdir(dirname(env.EMAIL_DEV_OUTBOX), { recursive: true });
+    await appendFile(env.EMAIL_DEV_OUTBOX, `${JSON.stringify({ ts: new Date().toISOString(), ...message })}\n`);
+    return;
+  }
   if (!env.EMAIL_SERVER_URL) {
     if (env.NODE_ENV === "production") {
       throw new Error("Email is not configured: set EMAIL_SERVER_URL");

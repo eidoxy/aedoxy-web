@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 
 /**
@@ -38,6 +39,8 @@ const schema = z.object({
   // Transactional email (provider not chosen yet: Resend or SMTP)
   EMAIL_FROM: later(z.string().min(1)),
   EMAIL_SERVER_URL: later(z.string().min(1)),
+  // Dev/test only: absolute file path that receives one JSON line per email. Refused when ENV_STRICT=true.
+  EMAIL_DEV_OUTBOX: z.string().min(1).optional(),
 
   // Poketo
   POKETO_SECRET_KEY: later(z.string().min(1)),
@@ -49,6 +52,15 @@ const schema = z.object({
 
   // Optional alert sink (Telegram/Discord webhook)
   ALERT_WEBHOOK_URL: z.url().optional(),
+}).superRefine((v, ctx) => {
+  if (!v.EMAIL_DEV_OUTBOX) return;
+  const message =
+    v.ENV_STRICT === "true"
+      ? "EMAIL_DEV_OUTBOX is dev-only and must be unset when ENV_STRICT=true"
+      : !isAbsolute(v.EMAIL_DEV_OUTBOX)
+        ? "EMAIL_DEV_OUTBOX must be an absolute path"
+        : undefined;
+  if (message) ctx.addIssue({ code: "custom", path: ["EMAIL_DEV_OUTBOX"], message });
 });
 
 export type Env = z.infer<typeof schema>;
@@ -60,7 +72,9 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   );
   const result = schema.safeParse(cleaned);
   if (!result.success) {
-    const names = result.error.issues.map((i) => i.path.join(".")).join(", ");
+    const names = result.error.issues
+      .map((i) => (i.code === "custom" ? `${i.path.join(".")} (${i.message})` : i.path.join(".")))
+      .join(", ");
     throw new Error(`Invalid environment variables: ${names}`);
   }
   return result.data;

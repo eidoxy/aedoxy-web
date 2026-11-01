@@ -85,3 +85,13 @@ Catatan:
 | User masuk console tetapi menjadi akun baru, bukan akun yang sudah ditautkan | `user_id_field` bukan `sub`, atau slug bukan `aedoxy` |
 | Mentok di `/login` dan tidak kembali ke console | Email belum diverifikasi, atau cookie sesi aedoxy.com diblokir. `trustedOrigins` harus memuat `NEWAPI_PUBLIC_URL` dan `NEXT_PUBLIC_SITE_URL` |
 | "Console belum bisa dihubungi" saat Buka Console | Bridge `accounts/ensure` gagal: cek `NEWAPI_INTERNAL_URL`, `NEWAPI_BRIDGE_TOKEN`, dan provider `aedoxy` sudah dibuat di New API (bila belum, bridge membalas 503) |
+
+## 6. Email dev/test: outbox file
+
+Provider email belum dipilih, jadi tautan verifikasi tidak terkirim. Untuk pengujian end-to-end (build production lokal, stdout tidak bisa diandalkan), set `EMAIL_DEV_OUTBOX` ke path absolut file, misalnya `D:\tmp\aedoxy-outbox.jsonl`. Setiap email ditambahkan sebagai satu baris JSON:
+
+```json
+{"ts":"2026-11-02T01:00:00.000Z","to":"user@example.com","subject":"Verifikasi email Aedoxy","text":"Buka tautan ini untuk memverifikasi email Anda:\nhttp://127.0.0.1:3000/api/auth/verify-email?token=...&callbackURL=%2F"}
+```
+
+Tes membaca baris terakhir dengan `to` yang sesuai, mengambil URL dari `text`, lalu membukanya. Variabel ini ditolak saat `ENV_STRICT=true` (aplikasi gagal start), jadi tidak pernah aktif di production. Tanpa outbox dan tanpa `EMAIL_SERVER_URL`, build production mencatat satu peringatan saat start dan setiap kegagalan kirim dicatat lewat `console.error` (`[auth] email failed ...`).
