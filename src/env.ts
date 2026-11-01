@@ -45,6 +45,8 @@ const schema = z.object({
   // Poketo
   POKETO_SECRET_KEY: later(z.string().min(1)),
   POKETO_WEBHOOK_SECRET: later(z.string().min(1)),
+  // Overridable so tests can point the client at a fake server.
+  POKETO_BASE_URL: z.url().default("https://poketo.id/api/v1"),
 
   // New API bridge
   NEWAPI_INTERNAL_URL: later(z.url()),

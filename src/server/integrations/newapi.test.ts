@@ -4,7 +4,7 @@ const TOKEN = "sk-test-bridge-token-123";
 const mockEnv = vi.hoisted(() => ({}) as { NEWAPI_INTERNAL_URL?: string; NEWAPI_BRIDGE_TOKEN?: string });
 vi.mock("@/env", () => ({ env: mockEnv }));
 
-import { ensureConsoleAccount, NewApiError } from "./newapi";
+import { ensureConsoleAccount, listActiveSubscriptions, NewApiError } from "./newapi";
 
 const input = { subject: "user-1", email: "a@b.co", displayName: "Ada" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -80,5 +80,53 @@ describe("ensureConsoleAccount", () => {
       const err = await failure();
       expect(`${err.name} ${err.message} ${err.stack ?? ""}`).not.toContain(TOKEN);
     }
+  });
+});
+
+describe("listActiveSubscriptions", () => {
+  beforeEach(() => {
+    mockEnv.NEWAPI_INTERNAL_URL = "http://newapi.internal:3000";
+    mockEnv.NEWAPI_BRIDGE_TOKEN = TOKEN;
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const future = Math.floor(Date.now() / 1000) + 86_400;
+  const sub = (over: Record<string, unknown>) => ({
+    subscription: { id: 1, plan_id: 7, amount_total: 1_000_000, amount_used: 250_000, end_time: future, status: "active", ...over },
+  });
+
+  it("requests the user's subscriptions with the bearer token and keeps only live active ones", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      json({
+        success: true,
+        data: [
+          sub({ id: 1 }),
+          sub({ id: 2, status: "expired" }),
+          sub({ id: 3, status: "cancelled" }),
+          sub({ id: 4, end_time: 1_000 }),
+          sub({ id: 5, amount_used: 2_000_000 }),
+          { subscription: null },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await listActiveSubscriptions(42);
+
+    expect(result).toEqual([
+      { id: 1, planId: 7, remainingQuota: 750_000, endsAt: new Date(future * 1000) },
+      { id: 5, planId: 7, remainingQuota: 0, endsAt: new Date(future * 1000) },
+    ]);
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(String(url)).toBe("http://newapi.internal:3000/api/subscription/admin/users/42/subscriptions");
+    expect(init.method).toBe("GET");
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("maps rejection and bad shapes to typed errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: false, message: "no" })));
+    await expect(listActiveSubscriptions(42)).rejects.toMatchObject({ kind: "rejected" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: true, data: "nope" })));
+    await expect(listActiveSubscriptions(42)).rejects.toMatchObject({ kind: "invalid_response" });
   });
 });
