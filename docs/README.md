@@ -9,6 +9,7 @@ Sistem langganan kredit API untuk ai.aedoxy.com (console New API) lewat aedoxy.c
 3. `features/`: planning per fitur, berisi tugas, ukuran, dan kriteria selesai.
 4. `UI-GUIDE.md`: token, tipografi, dan urutan section yang meniru gutsai.id, dengan screenshot di `ui-reference/`.
 5. `AI-SKILLS.md`: skill AI yang disarankan untuk mengerjakannya.
+6. `LOCAL-WEBHOOK.md`: tes webhook Poketo di laptop dengan Cloudflare Tunnel.
 
 | Fitur | Dokumen | Rilis |
 |---|---|---|
