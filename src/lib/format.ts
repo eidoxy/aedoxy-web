@@ -1,3 +1,6 @@
+/** New API default `quota_per_unit`: 500_000 quota = $1. */
+export const QUOTA_PER_USD = 500_000;
+
 const idr = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 });
 
 /** 25000 -> "Rp25.000" (no space, as in the F04 examples). */

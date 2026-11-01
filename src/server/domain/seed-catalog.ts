@@ -1,8 +1,6 @@
+import { QUOTA_PER_USD } from "@/lib/format";
 import { db } from "@/server/db/client";
 import { creditPool, plans, poolLedger } from "@/server/db/schema";
-
-/** New API default `quota_per_unit`: 500_000 quota = $1. */
-export const QUOTA_PER_USD = 500_000;
 
 /** Example catalog from the product owner. Prices are samples, not final. */
 const EXAMPLE_PLANS = [
