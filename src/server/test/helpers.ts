@@ -83,7 +83,19 @@ type FakeInvoice = { id: string; status: string; amount: number; referenceId: st
 export function installFakeServers() {
   const invoices = new Map<string, FakeInvoice>(); // keyed by referenceId
   const subscriptions = new Map<number, unknown[]>(); // New API user id -> data array
-  const state = { failCreate: false, calls: [] as string[] };
+  const newapiPlans = new Map<number, Record<string, unknown>>();
+  const fulfilled = new Map<string, { user_subscription_id: number; end_time: number; replaced: { id: number; remaining: number }[] }>();
+  const state = {
+    failCreate: false,
+    calls: [] as string[],
+    /** Number of upcoming fulfill calls that answer HTTP 500. */
+    failFulfill: 0,
+    /** Number of upcoming plan upserts that answer success:false. */
+    rejectPlan: 0,
+    /** trade_no -> subscriptions the bridge reports as replaced by that purchase. */
+    replacedBy: {} as Record<string, { id: number; remaining: number }[]>,
+    fulfillBodies: [] as Record<string, unknown>[],
+  };
 
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -120,12 +132,43 @@ export function installFakeServers() {
     if (url.host === "newapi.test") {
       const match = url.pathname.match(/^\/api\/subscription\/admin\/users\/(\d+)\/subscriptions$/);
       if (method === "GET" && match) return json({ success: true, message: "", data: subscriptions.get(Number(match[1])) ?? [] });
+
+      const planPath = url.pathname.match(/^\/api\/subscription\/admin\/plans(?:\/(\d+))?$/);
+      if (planPath && (method === "POST" || method === "PUT")) {
+        if (state.rejectPlan > 0) {
+          state.rejectPlan--;
+          return json({ success: false, message: "no" });
+        }
+        const { plan } = JSON.parse(String(init?.body)) as { plan: Record<string, unknown> };
+        const id = planPath[1] ? Number(planPath[1]) : newapiPlans.size + 100;
+        newapiPlans.set(id, plan);
+        return json({ success: true, message: "", data: { id, ...plan } });
+      }
+
+      if (method === "POST" && url.pathname === "/api/aedoxy/fulfill") {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        state.fulfillBodies.push(body);
+        if (state.failFulfill > 0) {
+          state.failFulfill--;
+          return json({ success: false, message: "console down" }, 500);
+        }
+        const tradeNo = String(body.trade_no);
+        const existing = fulfilled.get(tradeNo);
+        if (existing) return json({ success: true, message: "", data: { already_fulfilled: true, ...existing } });
+        const result = {
+          user_subscription_id: 500 + fulfilled.size,
+          end_time: Math.floor(Date.now() / 1000) + 30 * 86_400,
+          replaced: state.replacedBy[tradeNo] ?? [],
+        };
+        fulfilled.set(tradeNo, result);
+        return json({ success: true, message: "", data: { already_fulfilled: false, ...result } });
+      }
     }
 
     throw new Error(`Unexpected fetch in test: ${method} ${url.host}${url.pathname}`);
   });
 
-  return { invoices, subscriptions, state };
+  return { invoices, subscriptions, newapiPlans, fulfilled, state };
 }
 
 /** Signs `rawBody` like Poketo does and builds the Request the route handler receives. */

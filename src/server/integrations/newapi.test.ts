@@ -4,7 +4,7 @@ const TOKEN = "sk-test-bridge-token-123";
 const mockEnv = vi.hoisted(() => ({}) as { NEWAPI_INTERNAL_URL?: string; NEWAPI_BRIDGE_TOKEN?: string });
 vi.mock("@/env", () => ({ env: mockEnv }));
 
-import { ensureConsoleAccount, listActiveSubscriptions, NewApiError } from "./newapi";
+import { ensureConsoleAccount, findSubscription, fulfillSubscription, listActiveSubscriptions, NewApiError, upsertPlan } from "./newapi";
 
 const input = { subject: "user-1", email: "a@b.co", displayName: "Ada" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -128,5 +128,64 @@ describe("listActiveSubscriptions", () => {
     await expect(listActiveSubscriptions(42)).rejects.toMatchObject({ kind: "rejected" });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: true, data: "nope" })));
     await expect(listActiveSubscriptions(42)).rejects.toMatchObject({ kind: "invalid_response" });
+  });
+});
+
+describe("plans, fulfil and single subscription lookup", () => {
+  beforeEach(() => {
+    mockEnv.NEWAPI_INTERNAL_URL = "http://newapi.internal:3000";
+    mockEnv.NEWAPI_BRIDGE_TOKEN = TOKEN;
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const plan = { title: "t" } as Parameters<typeof upsertPlan>[0];
+
+  it("upsertPlan posts a new plan and returns its id, or puts to the existing id", async () => {
+    const fetchMock = vi.fn(async (_url: URL, _init: RequestInit) => json({ success: true, data: { id: 31 } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(upsertPlan(plan)).resolves.toBe(31);
+    await expect(upsertPlan(plan, 9)).resolves.toBe(9);
+
+    const calls = fetchMock.mock.calls;
+    expect([String(calls[0][0]), calls[0][1].method]).toEqual(["http://newapi.internal:3000/api/subscription/admin/plans", "POST"]);
+    expect([String(calls[1][0]), calls[1][1].method]).toEqual(["http://newapi.internal:3000/api/subscription/admin/plans/9", "PUT"]);
+    expect(JSON.parse(calls[0][1].body as string)).toEqual({ plan });
+  });
+
+  it("upsertPlan maps rejection and a create without an id to typed errors", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: false, message: "no" })));
+    await expect(upsertPlan(plan)).rejects.toMatchObject({ kind: "rejected" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: true })));
+    await expect(upsertPlan(plan)).rejects.toMatchObject({ kind: "invalid_response" });
+  });
+
+  it("fulfillSubscription sends the bridge fields and maps the result", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      json({ success: true, data: { already_fulfilled: false, user_subscription_id: 5, end_time: 1_800_000_000, replaced: [{ id: 4, remaining: 120 }] } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fulfillSubscription({ tradeNo: "ADX-1", newapiUserId: 3, newapiPlanId: 7, moneyIdr: 40_000, paymentMethod: "QRIS" });
+
+    expect(result).toEqual({ alreadyFulfilled: false, subscriptionId: 5, endsAt: new Date(1_800_000_000_000), replaced: [{ id: 4, remaining: 120 }] });
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(String(url)).toBe("http://newapi.internal:3000/api/aedoxy/fulfill");
+    expect(JSON.parse(init.body as string)).toEqual({ trade_no: "ADX-1", user_id: 3, plan_id: 7, money_idr: 40_000, payment_method: "QRIS" });
+  });
+
+  it("fulfillSubscription treats a null replaced list as empty and HTTP errors as http", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: true, data: { already_fulfilled: true, user_subscription_id: 5, end_time: 1_800_000_000, replaced: null } })));
+    const input = { tradeNo: "ADX-1", newapiUserId: 3, newapiPlanId: 7, moneyIdr: 1, paymentMethod: "QRIS" };
+    await expect(fulfillSubscription(input)).resolves.toMatchObject({ alreadyFulfilled: true, replaced: [] });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: false, message: "x" }, 409)));
+    await expect(fulfillSubscription(input)).rejects.toMatchObject({ kind: "http", status: 409 });
+  });
+
+  it("findSubscription returns an expired subscription by id, or null", async () => {
+    const sub = { id: 8, plan_id: 7, amount_total: 1_000_000, amount_used: 400_000, end_time: 1_000, status: "expired" };
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: [{ subscription: sub }] })));
+    await expect(findSubscription(42, 8)).resolves.toMatchObject({ id: 8, remainingQuota: 600_000, status: "expired" });
+    await expect(findSubscription(42, 9)).resolves.toBeNull();
   });
 });
