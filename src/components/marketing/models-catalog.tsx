@@ -242,7 +242,7 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
                 </div>
               </DitherPanel>
 
-              <div className="min-w-0 overflow-x-auto">
+              <div className="relative min-w-0 overflow-x-auto">
                 <table className="w-full min-w-[860px] text-left">
                   <caption className="sr-only">Model {provider.name}</caption>
                   <thead>

@@ -33,10 +33,10 @@ export function Hero({ plans, models, providers }: { plans: Plan[]; models: Mode
             <span className="ml-2">harga flat</span>
           </p>
         )}
-        <h1 className="mt-6 text-[44px] leading-[1.04] font-medium tracking-[-0.04em] text-heading sm:text-[56px] lg:text-[60px]">
-          Satu API key
+        <h1 className="mt-6 text-[44px] leading-[1.04] font-medium tracking-[-0.04em] text-heading sm:text-[56px] lg:text-[clamp(44px,4.6vw,60px)]">
+          <span className="lg:whitespace-nowrap">Satu API key.</span>
           <br />
-          <span className="text-grad">untuk semua model&nbsp;AI.</span>
+          <span className="text-grad lg:whitespace-nowrap">Semua model AI.</span>
         </h1>
         <p className="mt-6 max-w-[34rem] text-[17px] leading-[1.65] text-fg-muted sm:text-lg">
           Ganti satu base URL, lalu panggil Claude, GPT, Gemini, DeepSeek, dan model lain. Berlangganan paket berharga
