@@ -48,7 +48,7 @@ Pembeli membayar **harga flat paket** dalam rupiah lewat Poketo. Setelah lunas, 
 
 | # | Tugas | Ukuran |
 |---|---|---|
-| 1 | `integrations/poketo.ts` (SDK `poketo-node`): create/get/cancel invoice, payment-methods | S |
+| 1 | `integrations/poketo.ts` (klien `fetch` sendiri, karena SDK `poketo-node` tidak ada di npm): create/get/cancel invoice, payment-methods | S |
 | 2 | `domain/pricing.ts` + unit test (diskon, batas nominal) | S |
 | 3 | Server Action buat order + transaksi reservasi pool, stok paket, dan promo | M |
 | 4 | Route webhook: verifikasi, dedupe, konfirmasi invoice, transisi status, insert outbox | M |

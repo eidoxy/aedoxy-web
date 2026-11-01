@@ -78,7 +78,7 @@
 | Database | PostgreSQL 15 (sudah ada di compose), Drizzle ORM + drizzle-kit | Transaksi dan `UPDATE ... WHERE` bersyarat mudah ditulis. Alternatifnya Prisma |
 | Auth | Better Auth: email/password + verifikasi email, Google, plugin `twoFactor`, `admin`, OAuth 2.1 Provider | Admin wajib 2FA |
 | Email | Penyedia transaksional (Resend atau SMTP) | Verifikasi email dan reset password. Bukti bayar dikirim oleh Poketo |
-| Pembayaran | `poketo-node` (SDK resmi, Node 18+, tanpa dependensi) | Mengurus `Idempotency-Key`, retry 429/5xx, dan `webhooks.verify` |
+| Pembayaran | Klien tipis sendiri (`fetch` + `node:crypto`), tanpa paket baru | Dokumentasi Poketo menyebut SDK `poketo-node`, tetapi paket itu **tidak ada di registry npm** (dicek 2026-11-02; paket `poketo` di npm adalah pustaka manga yang tidak terkait, jangan dipasang). Klien sendiri mengurus `Idempotency-Key`, retry 429/5xx, dan verifikasi tanda tangan |
 | Kurs tampilan | `fetch` ke Frankfurter dan open.er-api | Tanpa API key |
 | Log | pino (JSON) | Opsional: Sentry untuk error |
 | Test | Vitest (unit dan integrasi dengan Postgres asli), Playwright (e2e sandbox) | |
@@ -107,7 +107,7 @@ aedoxy-web/
       domain/orders.ts      state machine order
       domain/fx.ts          konversi tampilan $ → Rp
       integrations/newapi.ts   klien bridge + endpoint admin
-      integrations/poketo.ts   wrapper poketo-node
+      integrations/poketo.ts   klien tipis Poketo (fetch) + verifikasi tanda tangan
       integrations/fx.ts       sumber kurs
       env.ts                validasi env dengan Zod (aplikasi gagal start bila kosong)
     worker/index.ts         loop outbox, sapu, kurs, rekonsiliasi
@@ -214,7 +214,7 @@ Sesuai `gateway-aedoxy/AGENTS.md`: transaksi ini wajib diuji di SQLite, MySQL, d
 Detail kredensial, verifikasi tanda tangan, kode respons, biaya, dan skenario sandbox ada di `topup-pool-poketo/INTEGRASI-POKETO.md` dan masih berlaku, dengan perubahan berikut:
 
 - URL webhook menjadi `https://aedoxy.com/api/webhooks/poketo`.
-- Verifikasi memakai `poketo.webhooks.verify(rawBody, signatureHeader, whsecSecret)` dari `poketo-node`. Body dibaca mentah dengan `await request.text()` sebelum di-parse.
+- Verifikasi memakai fungsi sendiri `verifyPoketoSignature(rawBody, signatureHeader, whsecSecret, now)`: HMAC-SHA256 atas `"<t>.<rawBody>"`, perbandingan waktu-konstan (`crypto.timingSafeEqual`), tolak `t` lebih tua dari 5 menit. Body dibaca mentah dengan `await request.text()` sebelum di-parse.
 - Yang ditagih adalah harga flat paket, bukan nominal kuota. Abaikan bagian "harga per juta kuota" di dokumen itu.
 
 Saat membuat invoice: `amount = amount_idr`, `items = [{ name: nama paket, quantity: 1, price: amount_idr }]`, `referenceId = trade_no`, `Idempotency-Key = trade_no`, `expiresInMinutes = 15`, `redirectUrl = https://aedoxy.com/orders/<id>`, `customer.email` dari akun, dan `metadata.order_id`.
