@@ -141,7 +141,7 @@ describe("plans, fulfil and single subscription lookup", () => {
   const plan = { title: "t" } as Parameters<typeof upsertPlan>[0];
 
   it("upsertPlan posts a new plan and returns its id, or puts to the existing id", async () => {
-    const fetchMock = vi.fn(async (_url: URL, _init: RequestInit) => json({ success: true, data: { id: 31 } }));
+    const fetchMock = vi.fn<(url: URL, init: RequestInit) => Promise<Response>>(async () => json({ success: true, data: { id: 31 } }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(upsertPlan(plan)).resolves.toBe(31);

@@ -11,7 +11,9 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed-oauth": "bun scripts/seed-oauth-client.ts"
+    "db:seed-oauth": "bun scripts/seed-oauth-client.ts",
+    "db:seed-catalog": "bun scripts/seed-catalog.ts",
+    "worker": "bun src/worker/index.ts"
   },
   "dependencies": {
     "@better-auth/oauth-provider": "^1.7.15",
