@@ -1,6 +1,9 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { QUOTA_PER_USD } from "@/lib/format";
 import { db } from "@/server/db/client";
 import { creditPool, plans, poolLedger } from "@/server/db/schema";
+import { NewApiError } from "@/server/integrations/newapi";
+import { syncPlan } from "./plan-sync";
 
 /** Example catalog from the product owner. Prices are samples, not final. */
 const EXAMPLE_PLANS = [
@@ -52,4 +55,29 @@ export async function seedCatalog(opts: { poolUsd?: number } = {}) {
       .onConflictDoUpdate({ target: plans.slug, set: { ...row, updatedAt: new Date() } });
   }
   return { poolCreated, plans: EXAMPLE_PLANS.length };
+}
+
+/**
+ * Pushes every enabled plan without `newapi_plan_id` to New API. A failure on
+ * one plan is recorded and the rest continue. Plans that already have an id are
+ * skipped, so reruns never create duplicates. Reasons come from NewApiError
+ * messages, which never carry the token or response body.
+ */
+export async function syncUnsyncedPlans() {
+  const pending = await db
+    .select({ id: plans.id, slug: plans.slug })
+    .from(plans)
+    .where(and(eq(plans.enabled, true), isNull(plans.newapiPlanId)))
+    .orderBy(plans.sortOrder);
+  let synced = 0;
+  const failed: { slug: string; reason: string }[] = [];
+  for (const p of pending) {
+    try {
+      await syncPlan(p.id);
+      synced++;
+    } catch (err) {
+      failed.push({ slug: p.slug, reason: err instanceof NewApiError ? `${err.kind}: ${err.message}` : "unexpected error" });
+    }
+  }
+  return { synced, failed };
 }

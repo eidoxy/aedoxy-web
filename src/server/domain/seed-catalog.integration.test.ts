@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, pool as pgPool } from "@/server/db/client";
 import { plans, poolLedger } from "@/server/db/schema";
-import { prepareDatabase, readPool, resetDatabase } from "@/server/test/helpers";
-import { seedCatalog } from "./seed-catalog";
+import { installFakeServers, prepareDatabase, readPool, resetDatabase } from "@/server/test/helpers";
+import { seedCatalog, syncUnsyncedPlans } from "./seed-catalog";
 
 beforeAll(prepareDatabase);
 afterAll(() => pgPool.end());
@@ -36,6 +36,44 @@ describe("seedCatalog", () => {
     expect(synced.newapiPlanId).toBe(9);
     expect(await readPool()).toMatchObject({ totalQuota: 50_000_000 });
     expect(await db.select().from(poolLedger)).toHaveLength(1);
+  });
+
+  describe("syncUnsyncedPlans", () => {
+    let fake: ReturnType<typeof installFakeServers>;
+    beforeEach(() => {
+      fake = installFakeServers();
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("syncs unsynced enabled plans, skips synced and disabled ones, and does not duplicate on rerun", async () => {
+      await seedCatalog();
+      await db.update(plans).set({ newapiPlanId: 9 }).where(eq(plans.slug, "bulanan-20"));
+      await db.update(plans).set({ enabled: false }).where(eq(plans.slug, "bulanan-40"));
+
+      expect(await syncUnsyncedPlans()).toEqual({ synced: 4, failed: [] });
+      expect(fake.newapiPlans.size).toBe(4);
+      const rows = await db.select().from(plans);
+      expect(rows.filter((r) => r.newapiPlanId !== null)).toHaveLength(5);
+      expect(rows.find((r) => r.slug === "bulanan-20")?.newapiPlanId).toBe(9);
+      expect(rows.find((r) => r.slug === "bulanan-40")?.newapiPlanId).toBeNull();
+
+      expect(await syncUnsyncedPlans()).toEqual({ synced: 0, failed: [] });
+      expect(fake.newapiPlans.size).toBe(4);
+    });
+
+    it("keeps going when one plan fails, and a rerun syncs only the failed one", async () => {
+      await seedCatalog();
+      fake.state.rejectPlan = 1; // first push (mingguan-5) is rejected
+
+      const first = await syncUnsyncedPlans();
+      expect(first.synced).toBe(5);
+      expect(first.failed).toHaveLength(1);
+      expect(first.failed[0].slug).toBe("mingguan-5");
+      expect(first.failed[0].reason).toMatch(/^rejected:/);
+
+      expect(await syncUnsyncedPlans()).toEqual({ synced: 1, failed: [] });
+      expect(fake.newapiPlans.size).toBe(6);
+    });
   });
 
   it("defaults to an empty pool without a ledger row", async () => {

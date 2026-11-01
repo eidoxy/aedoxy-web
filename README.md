@@ -16,7 +16,8 @@ bun run lint
 bun run test         # Vitest, pure logic only
 bun run build        # output: standalone
 bun run db:generate  # Drizzle migrations from src/server/db/schema.ts (no DB needed)
-bun run db:seed-catalog  # example plans + pool row (SEED_POOL_USD=500 sets the opening balance once)
+bun run db:seed-catalog  # example plans + pool row (SEED_POOL_USD=500 sets the opening balance once; an existing pool is never changed)
+                          # also syncs unsynced plans to New API: needs the console running + NEWAPI_INTERNAL_URL/NEWAPI_BRIDGE_TOKEN; rerun after a failure
 bun run worker       # outbox, order sweeper, expiry reconciliation, pool invariant (needs DATABASE_URL + New API/Poketo env)
 ```
 
