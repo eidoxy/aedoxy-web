@@ -3,7 +3,7 @@
 import { ArrowRight, Plus } from "lucide-react";
 import { useState, type ComponentType, type SVGProps } from "react";
 import { ClaudeCode, Cline, Cursor, OpenCode } from "@/components/brand/icons";
-import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
 
@@ -64,34 +64,35 @@ export function IntegrationsSection({ apiBaseUrl, modelId }: { apiBaseUrl: strin
             Agen coding berbasis CLI atau IDE tetap berjalan seperti biasa. Arahkan base URL dan API key ke aedoxy, lalu
             lanjut bekerja.
           </p>
-          <ul className="mt-8 space-y-1" aria-label="Agen yang didukung">
+          <ToggleGroup
+            type="single"
+            spacing={1}
+            value={activeId}
+            onValueChange={(v) => v && setActiveId(v)}
+            aria-label="Agen yang didukung"
+            className="mt-8 w-full flex-col items-stretch"
+          >
             {AGENTS.map((a) => {
               const Icon = a.icon;
               const on = a.id === activeId;
               return (
-                <li key={a.id}>
-                  <button
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setActiveId(a.id)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-colors hover:bg-line",
-                      on && "bg-line",
-                    )}
-                  >
-                    <span className="grid size-8 place-items-center rounded-lg border border-line bg-surface text-fg">
-                      {Icon ? <Icon size={18} aria-hidden /> : <Plus className="size-4" aria-hidden />}
-                    </span>
-                    <span className="text-[15px] font-medium text-heading">{a.name}</span>
-                    <span className="ml-auto flex items-center gap-2 font-mono text-[10px] tracking-wider text-faint uppercase">
-                      {a.tag}
-                      {on && <ArrowRight className="size-4 text-fg-muted" aria-hidden />}
-                    </span>
-                  </button>
-                </li>
+                <ToggleGroupItem
+                  key={a.id}
+                  value={a.id}
+                  className="h-auto w-full justify-start gap-3 rounded-xl px-3.5 py-3 text-left font-normal hover:bg-line data-[state=on]:bg-line"
+                >
+                  <span className="grid size-8 place-items-center rounded-lg border border-line bg-surface text-fg">
+                    {Icon ? <Icon size={18} className="size-[18px]" aria-hidden /> : <Plus className="size-4" aria-hidden />}
+                  </span>
+                  <span className="text-[15px] font-medium text-heading">{a.name}</span>
+                  <span className="ml-auto flex items-center gap-2 font-mono text-[10px] tracking-wider text-faint uppercase">
+                    {a.tag}
+                    {on && <ArrowRight className="size-4 text-fg-muted" aria-hidden />}
+                  </span>
+                </ToggleGroupItem>
               );
             })}
-          </ul>
+          </ToggleGroup>
         </div>
 
         <div className="reveal overflow-hidden rounded-card-lg border border-line bg-surface shadow-card-hover">

@@ -3,6 +3,8 @@
 import { ArrowUpRight, X } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Announcement } from "@/server/catalog/types";
 
 const listeners = new Set<() => void>();
@@ -56,14 +58,21 @@ export function AnnouncementBar({ item }: { item: Announcement }) {
           </Link>
         </p>
       </div>
-      <button
-        type="button"
-        onClick={() => dismiss(item.id)}
-        aria-label="Tutup pengumuman"
-        className="absolute top-1/2 right-3 grid size-8 -translate-y-1/2 place-items-center rounded-md text-fg-muted hover:bg-line hover:text-fg sm:right-6"
-      >
-        <X className="size-4" aria-hidden />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => dismiss(item.id)}
+            aria-label="Tutup pengumuman"
+            className="absolute top-1/2 right-3 -mt-4 rounded-md text-fg-muted hover:bg-line hover:text-fg sm:right-6 dark:hover:bg-line"
+          >
+            <X aria-hidden />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Tutup pengumuman</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

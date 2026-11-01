@@ -3,6 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Pause, Play, Zap } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MIN_ACTIVITY_ITEMS } from "@/lib/activity";
 import { formatAge } from "@/lib/format";
 import { activityListSchema } from "@/lib/schemas/activity";
@@ -33,7 +36,7 @@ function line(item: ActivityItem, now: number | null) {
 /**
  * One-line vertical ticker (F07): swaps every 4s, stops on hover/focus, has a
  * pause button, and swaps without motion under prefers-reduced-motion. Hidden
- * when fewer than 3 items exist. aria-live is off; the full list sits in <details>.
+ * when fewer than 3 items exist. aria-live is off; the full list sits in a popover.
  */
 const subscribeNever = () => () => {};
 
@@ -77,6 +80,7 @@ export function ActivityTicker({ initialItems, className }: { initialItems: Acti
 
   if (count < MIN_ACTIVITY_ITEMS) return null;
   const current = items[index % count];
+  const pauseLabel = userPaused ? "Lanjutkan pergantian aktivitas" : "Jeda pergantian aktivitas";
 
   return (
     <section
@@ -95,26 +99,41 @@ export function ActivityTicker({ initialItems, className }: { initialItems: Acti
             {line(current, now)}
           </p>
         </div>
-        <details className="relative">
-          <summary className="cursor-pointer list-none rounded px-2 py-1 font-mono text-xs text-primary-ink hover:underline [&::-webkit-details-marker]:hidden">
-            <span className="sm:hidden">Semua</span>
-            <span className="hidden sm:inline">Lihat aktivitas terbaru</span>
-          </summary>
-          <ul className="absolute top-full right-0 z-30 mt-2 w-[min(20rem,calc(100vw-2.5rem))] space-y-2 rounded-xl border border-line bg-surface p-4 font-mono text-xs text-fg-soft shadow-card-hover">
-            {items.map((item) => (
-              <li key={`${item.at}-${item.label}`}>{line(item, now)}</li>
-            ))}
-          </ul>
-        </details>
-        <button
-          type="button"
-          onClick={() => setUserPaused((p) => !p)}
-          aria-pressed={userPaused}
-          aria-label={userPaused ? "Lanjutkan pergantian aktivitas" : "Jeda pergantian aktivitas"}
-          className="grid size-7 shrink-0 place-items-center rounded-md border border-line-strong bg-surface text-fg-muted hover:text-fg"
-        >
-          {userPaused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
-        </button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="link" className="h-auto rounded px-2 py-1 font-mono text-xs text-primary-ink">
+              <span className="sm:hidden">Semua</span>
+              <span className="hidden sm:inline">Lihat aktivitas terbaru</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            sideOffset={8}
+            className="w-[min(20rem,calc(100vw-2.5rem))] gap-0 rounded-xl border border-line bg-surface p-4 font-mono text-xs text-fg-soft shadow-card-hover"
+          >
+            <ul className="space-y-2">
+              {items.map((item) => (
+                <li key={`${item.at}-${item.label}`}>{line(item, now)}</li>
+              ))}
+            </ul>
+          </PopoverContent>
+        </Popover>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setUserPaused((p) => !p)}
+              aria-pressed={userPaused}
+              aria-label={pauseLabel}
+              className="shrink-0 border-line-strong bg-surface text-fg-muted hover:bg-surface hover:text-fg dark:border-line-strong dark:bg-surface dark:hover:bg-surface"
+            >
+              {userPaused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{pauseLabel}</TooltipContent>
+        </Tooltip>
       </div>
     </section>
   );

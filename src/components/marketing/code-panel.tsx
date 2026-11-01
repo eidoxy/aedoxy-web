@@ -2,7 +2,9 @@
 
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { highlightLine } from "@/lib/highlight";
 import { buildSnippet, SNIPPET_LANGS, type SnippetLang } from "@/lib/snippets";
 import { cn } from "@/lib/utils";
@@ -39,17 +41,18 @@ export function CodePanel({ apiBaseUrl, modelIds }: { apiBaseUrl: string; modelI
               </TabsTrigger>
             ))}
           </TabsList>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={copy}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-xs text-fg-muted hover:text-fg"
+            className="h-auto gap-1.5 rounded-md px-2 py-1.5 font-mono text-xs text-fg-muted hover:bg-transparent hover:text-fg dark:hover:bg-transparent"
           >
             {copied ? <Check className="size-3.5 text-primary-ink" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
             {copied ? "Disalin" : "Salin"}
             <span className="sr-only" aria-live="polite">
               {copied ? "Kode disalin ke clipboard" : ""}
             </span>
-          </button>
+          </Button>
         </div>
         {SNIPPET_LANGS.map((l) => {
           const lines = buildSnippet(l, apiBaseUrl, model).split("\n");
@@ -88,25 +91,24 @@ export function CodePanel({ apiBaseUrl, modelIds }: { apiBaseUrl: string; modelI
           Halo! Ada yang bisa saya bantu? <span className="cursor-blink text-fg" aria-hidden />
         </p>
         {modelIds.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Pilih model untuk contoh kode">
+          <ToggleGroup
+            type="single"
+            value={model}
+            onValueChange={(v) => v && setModel(v)}
+            aria-label="Pilih model untuk contoh kode"
+            className="mt-3 w-full flex-wrap"
+          >
             <span className="text-faint">coba →</span>
             {modelIds.map((id) => (
-              <button
+              <ToggleGroupItem
                 key={id}
-                type="button"
-                aria-pressed={id === model}
-                onClick={() => setModel(id)}
-                className={cn(
-                  "rounded-md border px-2 py-1 transition-colors",
-                  id === model
-                    ? "border-primary-ink/30 bg-primary-tint text-primary-ink"
-                    : "border-transparent text-fg-muted hover:text-fg",
-                )}
+                value={id}
+                className="h-auto min-w-0 rounded-md border border-transparent px-2 py-1 font-mono text-xs font-normal text-fg-muted hover:bg-transparent hover:text-fg data-[state=on]:border-primary-ink/30 data-[state=on]:bg-primary-tint data-[state=on]:text-primary-ink data-[state=on]:hover:bg-primary-tint data-[state=on]:hover:text-primary-ink"
               >
                 {id}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         )}
       </div>
     </div>
