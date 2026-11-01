@@ -1,0 +1,111 @@
+import { oauthProvider } from "@better-auth/oauth-provider";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
+import { admin } from "better-auth/plugins/admin";
+import { jwt } from "better-auth/plugins/jwt";
+import { twoFactor } from "better-auth/plugins/two-factor";
+import { env } from "@/env";
+import { ensureConsoleAccountForUser } from "@/server/account";
+import { db } from "@/server/db/client";
+import * as schema from "@/server/db/schema";
+import { sendEmail } from "@/server/email";
+
+const isProd = env.NODE_ENV === "production";
+
+/** Best effort: a failed bridge call must never fail sign-up or verification. "Buka Console" retries it. */
+async function linkConsoleAccount(userId: string) {
+  try {
+    await ensureConsoleAccountForUser(userId);
+  } catch (err) {
+    console.error(`[auth] console account link failed user=${userId} reason=${err instanceof Error ? err.message : "unknown"}`);
+  }
+}
+
+/** Fire and forget so response timing does not reveal whether an email is registered. */
+function mail(to: string, subject: string, text: string) {
+  void sendEmail({ to, subject, text }).catch((err: unknown) => {
+    console.error(`[auth] email failed subject="${subject}" reason=${err instanceof Error ? err.message : "unknown"}`);
+  });
+}
+
+export const auth = betterAuth({
+  baseURL: env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_SITE_URL,
+  secret: env.BETTER_AUTH_SECRET,
+  trustedOrigins: [env.NEXT_PUBLIC_SITE_URL, env.NEWAPI_PUBLIC_URL],
+  database: drizzleAdapter(db, { provider: "pg", schema }),
+
+  // oauthProvider replaces the jwt plugin's /token endpoint (see the plugin docs).
+  disabledPaths: ["/token"],
+
+  user: {
+    additionalFields: {
+      newapiUserId: { type: "number", required: false, unique: true, input: false },
+      feedVisibility: { type: "string", required: false, defaultValue: "masked", input: false },
+    },
+  },
+
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    minPasswordLength: 10,
+    sendResetPassword: async ({ user, url }) => {
+      mail(user.email, "Atur ulang kata sandi Aedoxy", `Buka tautan ini untuk mengatur ulang kata sandi (berlaku 1 jam):\n${url}\n\nAbaikan email ini bila bukan Anda yang meminta.`);
+    },
+  },
+
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      mail(user.email, "Verifikasi email Aedoxy", `Buka tautan ini untuk memverifikasi email Anda:\n${url}`);
+    },
+    afterEmailVerification: async (user) => {
+      await linkConsoleAccount(user.id);
+    },
+  },
+
+  // Google sign-ups arrive with a verified email, so link them on creation.
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          if (user.emailVerified) await linkConsoleAccount(user.id);
+        },
+      },
+    },
+  },
+
+  socialProviders:
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
+      : {},
+
+  advanced: { useSecureCookies: isProd },
+
+  // shortcut: in-memory counters are per process; move to storage "database" when running more than one instance.
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 3 },
+      "/request-password-reset": { window: 60, max: 3 },
+      "/send-verification-email": { window: 60, max: 3 },
+    },
+  },
+
+  plugins: [
+    jwt(),
+    oauthProvider({
+      loginPage: "/login",
+      // Required by the plugin's types; the console client skips consent, so this page is never reached.
+      consentPage: "/consent",
+      scopes: ["openid", "profile", "email"],
+    }),
+    twoFactor({ issuer: "Aedoxy" }),
+    admin({ defaultRole: "user", adminRoles: ["admin"] }),
+    nextCookies(), // keep last
+  ],
+});

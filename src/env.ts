@@ -31,6 +31,10 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: later(z.string().min(1)),
   GOOGLE_CLIENT_SECRET: later(z.string().min(1)),
 
+  // First-party OIDC client for the New API console (seeded by scripts/seed-oauth-client.ts)
+  CONSOLE_OIDC_CLIENT_ID: z.string().min(1).default("aedoxy-console"),
+  CONSOLE_OIDC_CLIENT_SECRET: later(z.string().min(1)),
+
   // Transactional email (provider not chosen yet: Resend or SMTP)
   EMAIL_FROM: later(z.string().min(1)),
   EMAIL_SERVER_URL: later(z.string().min(1)),

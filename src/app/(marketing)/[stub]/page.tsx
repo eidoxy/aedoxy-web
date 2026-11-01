@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 /*
- * Placeholder for routes that later waves implement (docs, legal, auth entry).
+ * Placeholder for routes that later waves implement (docs, legal).
  * Static segments such as /models and /pricing take precedence, and a real
  * /docs/page.tsx (etc.) added later overrides the matching entry here.
  */
@@ -12,8 +12,6 @@ const STUBS: Record<string, { title: string; text: string }> = {
   terms: { title: "Syarat Layanan", text: "Draf syarat layanan sedang disiapkan." },
   privacy: { title: "Kebijakan Privasi", text: "Draf kebijakan privasi sedang disiapkan." },
   refund: { title: "Kebijakan Refund", text: "Draf kebijakan refund sedang disiapkan." },
-  login: { title: "Masuk", text: "Halaman masuk akan tersedia setelah integrasi akun selesai." },
-  register: { title: "Daftar", text: "Pendaftaran akan tersedia setelah integrasi akun selesai." },
 };
 
 export function generateStaticParams() {
