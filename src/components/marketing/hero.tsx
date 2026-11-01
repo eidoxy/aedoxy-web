@@ -23,7 +23,7 @@ export function Hero({ plans, models, providers }: { plans: Plan[]; models: Mode
   const more = providers.length - pills.length;
 
   return (
-    <section className="container-x grid items-center gap-12 py-12 sm:py-16 lg:min-h-[calc(100svh-7.5rem)] lg:grid-cols-[1fr_1.18fr] lg:gap-16 lg:py-20">
+    <section className="container-x grid items-center gap-12 py-12 sm:py-16 lg:min-h-[calc(100svh-7.5rem)] lg:grid-cols-[1.2fr_1.18fr] lg:gap-16 lg:py-20">
       <div>
         {cheapest && (
           <p className="grad-border inline-flex items-center rounded-full px-3.5 py-1.5 font-mono text-[13px] text-fg-soft">
@@ -36,7 +36,7 @@ export function Hero({ plans, models, providers }: { plans: Plan[]; models: Mode
         <h1 className="mt-6 text-[44px] leading-[1.04] font-medium tracking-[-0.04em] text-heading sm:text-[56px] lg:text-[60px]">
           Satu API key
           <br />
-          <span className="text-grad">untuk semua model AI.</span>
+          <span className="text-grad">untuk semua model&nbsp;AI.</span>
         </h1>
         <p className="mt-6 max-w-[34rem] text-[17px] leading-[1.65] text-fg-muted sm:text-lg">
           Ganti satu base URL, lalu panggil Claude, GPT, Gemini, DeepSeek, dan model lain. Berlangganan paket berharga

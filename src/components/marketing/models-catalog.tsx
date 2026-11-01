@@ -223,7 +223,7 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
             <section
               key={provider.id}
               aria-labelledby={`provider-${provider.id}`}
-              className="grid overflow-hidden rounded-card-lg border border-line bg-surface shadow-card md:grid-cols-[300px_minmax(0,1fr)]"
+              className="grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-card-lg border border-line bg-surface shadow-card md:grid-cols-[300px_minmax(0,1fr)]"
             >
               <DitherPanel seed={gi + 1} className="min-h-[150px] md:min-h-full">
                 <div className="relative flex h-full flex-col justify-between p-5">
@@ -242,7 +242,7 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
                 </div>
               </DitherPanel>
 
-              <div className="overflow-x-auto">
+              <div className="min-w-0 overflow-x-auto">
                 <table className="w-full min-w-[860px] text-left">
                   <caption className="sr-only">Model {provider.name}</caption>
                   <thead>
