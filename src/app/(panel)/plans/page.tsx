@@ -2,11 +2,12 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { param, type SearchParams } from "@/components/admin/common";
+import { ActivityCard } from "@/components/panel/activity-card";
 import { PlanBuyForm } from "@/components/panel/plan-buy-form";
 import { PromoCodeBox } from "@/components/panel/promo-code-box";
 import { FxFootnote, UsdIdr } from "@/components/usd-idr";
 import { discountPercent, formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
-import { getFxRate } from "@/server/catalog";
+import { getActivity, getFxRate } from "@/server/catalog";
 import { listOnSalePlans } from "@/server/domain/plan-sellable";
 import { getPoolStatus } from "@/server/domain/pool-status";
 import { PromoError, quotePlans, rejectionMessage } from "@/server/domain/promotions";
@@ -38,12 +39,13 @@ async function hasActivePlan(newapiUserId: number | null) {
 async function Plans({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await requireSession();
   const kode = param((await searchParams).kode)?.slice(0, 64);
-  const [onSale, poolStatus, hasActive, fx] = await Promise.all([
+  const [onSale, poolStatus, hasActive, fx, activity] = await Promise.all([
     // Only plans that exist in New API can be bought (createPlanOrder enforces it too).
     listOnSalePlans(),
     getPoolStatus(),
     hasActivePlan(user.newapiUserId ?? null),
     getFxRate(),
+    getActivity(),
   ]);
 
   // Automatic discounts show without a code; a code from ?kode= is checked again here and again when the order is made.
@@ -140,6 +142,7 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
           })}
         </ul>
       )}
+      <ActivityCard initialItems={activity} />
       <FxFootnote fx={fx} className="mt-6" />
     </div>
   );

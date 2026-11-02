@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseEnv } from "@/env";
-import { visibleActivity } from "./activity";
+import { maskName, pickActivityRows, roundToMinute, visibleActivity, type ActivityRow } from "./activity";
 import { discountPercent, formatAge, formatIdr, formatTokens, formatUsd } from "./format";
 import { fxNote, usdToIdr } from "./fx";
 import { filterModels, savingPercent } from "./models";
@@ -90,6 +90,33 @@ describe("activity feed rules (F07)", () => {
   it("drops items older than 7 days", () => {
     const out = visibleActivity([item(1), item(2), item(3), item(24 * 8)], now);
     expect(out).toHaveLength(3);
+  });
+});
+
+describe("activity masking and picking (F07)", () => {
+  it("masks to first + ••• + last grapheme, and falls back to Pengguna", () => {
+    expect(maskName("Rama Adi")).toBe("R•••i");
+    expect(maskName("  Citra ")).toBe("C•••a");
+    expect(maskName("Ana")).toBe("A•••a");
+    expect(maskName("Al")).toBe("Pengguna");
+    expect(maskName("")).toBe("Pengguna");
+    expect(maskName("rama@example.com")).toBe("Pengguna");
+  });
+  it("never splits emoji or combined characters", () => {
+    expect(maskName("😀x👨‍👩‍👧")).toBe("😀•••👨‍👩‍👧");
+    expect(maskName("😀😀")).toBe("Pengguna");
+    expect(maskName("e\u0301ab\u0301")).toBe("e\u0301•••b\u0301");
+  });
+  it("rounds the time down to the minute", () => {
+    expect(roundToMinute(new Date("2026-11-01T10:07:59.999Z"))).toBe("2026-11-01T10:07:00Z");
+  });
+  it("keeps the newest row per user and at most 20 rows", () => {
+    const row = (userId: string, mins: number): ActivityRow => ({ userId, name: "Nama", plan: "p", paidAt: new Date(Date.UTC(2026, 10, 1, 12, 0) - mins * 60_000) });
+    const picked = pickActivityRows([row("a", 1), row("a", 2), row("b", 3)]);
+    expect(picked.map((r) => r.userId)).toEqual(["a", "b"]);
+    expect(picked[0].paidAt.getTime()).toBeGreaterThan(picked[1].paidAt.getTime());
+    const many = Array.from({ length: 30 }, (_, i) => row(`u${i}`, i));
+    expect(pickActivityRows(many)).toHaveLength(20);
   });
 });
 

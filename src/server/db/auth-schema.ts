@@ -27,6 +27,8 @@ export const user = pgTable("user", {
   banExpires: timestamp("ban_expires"),
   newapiUserId: integer("newapi_user_id").unique(),
   feedVisibility: text("feed_visibility").default("masked"),
+  /** F07 opt-out, read straight from the table (not a Better Auth field). `feed_visibility` above is unused. */
+  showActivity: boolean("show_activity").default(true).notNull(),
 });
 
 export const session = pgTable(

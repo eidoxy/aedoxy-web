@@ -106,7 +106,6 @@ export interface CatalogSource {
   getPlans(): Promise<Plan[]>;
   getProviders(): Promise<Provider[]>;
   getModels(): Promise<Model[]>;
-  getActivity(): Promise<ActivityItem[]>;
   getFxRate(): Promise<FxRate | null>;
   getStats(): Promise<Stats>;
   getAnnouncement(): Promise<Announcement | null>;

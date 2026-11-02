@@ -22,13 +22,13 @@ async function fetchActivity(): Promise<ActivityItem[]> {
 }
 
 // Minute-aligned "now". Null on the server, so the first paint has no relative time and nothing mismatches.
-function subscribeClock(cb: () => void) {
+export function subscribeClock(cb: () => void) {
   const id = setInterval(cb, 30_000);
   return () => clearInterval(id);
 }
-const clockSnapshot = () => Math.floor(Date.now() / 60_000) * 60_000;
+export const clockSnapshot = () => Math.floor(Date.now() / 60_000) * 60_000;
 
-function line(item: ActivityItem, now: number | null) {
+export function line(item: ActivityItem, now: number | null) {
   const age = now === null ? "" : ` · ${formatAge(now - Date.parse(item.at))}`;
   return `${item.label} berlangganan ${item.plan}${age}`;
 }
@@ -38,14 +38,14 @@ function line(item: ActivityItem, now: number | null) {
  * pause button, and swaps without motion under prefers-reduced-motion. Hidden
  * when fewer than 3 items exist. aria-live is off; the full list sits in a popover.
  */
-const subscribeNever = () => () => {};
+export const subscribeNever = () => () => {};
 
 /**
  * Polls the feed (TanStack Query, F07). Mounted only after hydration: Query reads
  * Date.now() while seeding data, which Cache Components forbids during prerender.
  * Renders nothing; it pushes fresh items up to the ticker.
  */
-function ActivityPoller({ initialItems, onItems }: { initialItems: ActivityItem[]; onItems: (items: ActivityItem[]) => void }) {
+export function ActivityPoller({ initialItems, onItems }: { initialItems: ActivityItem[]; onItems: (items: ActivityItem[]) => void }) {
   const { data } = useQuery({
     queryKey: ["public-activity"],
     queryFn: fetchActivity,

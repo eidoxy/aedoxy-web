@@ -19,6 +19,7 @@ import { refreshFxAction, saveFxSettingsAction } from "./fx/actions";
 import { retryFulfillmentAction } from "./orders/actions";
 import { createPromoAction, stopPromoAction } from "./promos/actions";
 import { duplicatePlanAction, movePlanAction, savePlanAction, setEnabledAction, setPriceAction } from "./plans/actions";
+import { hideActivityItemAction, saveActivitySettingsAction } from "./activity/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
 import { GET as exportLedger } from "./pool/export/route";
 
@@ -34,6 +35,8 @@ const actions = {
   refreshFxAction,
   createPromoAction,
   stopPromoAction,
+  saveActivitySettingsAction,
+  hideActivityItemAction,
 };
 const plain = { duplicatePlanAction, movePlanAction };
 

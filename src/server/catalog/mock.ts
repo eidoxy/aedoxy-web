@@ -4,7 +4,6 @@
  * table in docs/features/F05-admin-paket.md. Replace with the real source.
  */
 import type {
-  ActivityItem,
   Capability,
   CatalogSource,
   Model,
@@ -79,23 +78,11 @@ const plans: Plan[] = [
   { id: 6, slug: "bulanan-40", name: "Bulanan", tagline: "Untuk tim kecil", period: "monthly", durationDays: 30, creditUsd: 40, priceIdr: 100_000, compareAtPriceIdr: null, badge: null, fairUse: false, stock: "available", sortOrder: 6 },
 ];
 
-const MIN = 60_000;
-const activitySeed: { label: string; planSlug: string; minutesAgo: number }[] = [
-  { label: "R•••a", planSlug: "bulanan-20", minutesAgo: 14 },
-  { label: "A•••n", planSlug: "mingguan-7", minutesAgo: 47 },
-  { label: "D•••i", planSlug: "bulanan-10", minutesAgo: 130 },
-  { label: "S•••o", planSlug: "mingguan-11", minutesAgo: 320 },
-  { label: "Pengguna", planSlug: "bulanan-40", minutesAgo: 900 },
-  { label: "M•••h", planSlug: "mingguan-5", minutesAgo: 2000 },
-];
-
 const rankings: RankingEntry[] = [
   { modelId: "kimi-k2", providerId: "moonshot", weeklyTokens: 2_700_000_000, changePct: 80, isNew: false },
   { modelId: "deepseek-chat", providerId: "deepseek", weeklyTokens: 2_600_000_000, changePct: 50, isNew: false },
   { modelId: "glm-4.6", providerId: "zai", weeklyTokens: 1_500_000_000, changePct: null, isNew: true },
 ];
-
-const usd = (n: number) => `$${n}`;
 
 export const mockCatalog: CatalogSource = {
   async getPlans() {
@@ -106,14 +93,6 @@ export const mockCatalog: CatalogSource = {
   },
   async getModels() {
     return models;
-  },
-  async getActivity(): Promise<ActivityItem[]> {
-    const now = Date.now();
-    return activitySeed.flatMap((a) => {
-      const plan = plans.find((p) => p.slug === a.planSlug);
-      if (!plan) return [];
-      return [{ label: a.label, plan: `${plan.name} ${usd(plan.creditUsd)}`, at: new Date(now - a.minutesAgo * MIN).toISOString() }];
-    });
   },
   async getFxRate() {
     return {

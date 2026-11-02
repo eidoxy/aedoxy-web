@@ -286,6 +286,13 @@ export const adminAuditLog = pgTable("admin_audit_log", {
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
+/** Small admin-owned settings, one jsonb value per key. Key "activity": F07 feed controls (see domain/activity.ts). */
+export const siteSettings = pgTable("site_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
 /** Catalog metadata New API does not keep (F08). */
 export const modelMeta = pgTable("model_meta", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

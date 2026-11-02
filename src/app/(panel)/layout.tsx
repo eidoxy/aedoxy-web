@@ -16,6 +16,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <Link href="/dashboard" className="hover:text-heading">Dashboard</Link>
               <Link href="/plans" className="hover:text-heading">Paket</Link>
               <Link href="/orders" className="hover:text-heading">Pesanan</Link>
+              <Link href="/settings" className="hover:text-heading">Pengaturan</Link>
             </nav>
             <ThemeToggle />
           </div>

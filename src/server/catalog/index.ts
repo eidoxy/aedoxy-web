@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { visibleActivity } from "@/lib/activity";
+import { getPublicActivity } from "@/server/domain/activity";
 import { getDisplayFx } from "@/server/domain/fx-rate";
 import { mockCatalog } from "./mock";
 import type { CatalogSource } from "./types";
@@ -61,8 +61,16 @@ export async function getRankings() {
   return source.getRankings();
 }
 
+/** Real feed (F07). Cached 30 s; opt-out and admin changes expire the "activity" tag. */
 export async function getActivity() {
   "use cache";
   cacheLife({ stale: 30, revalidate: 30, expire: 600 });
-  return visibleActivity(await source.getActivity(), Date.now());
+  cacheTag("activity");
+  try {
+    return await getPublicActivity();
+  } catch (err) {
+    // The feed is optional: without a database the public pages still render.
+    console.warn("[activity] feed unavailable", err instanceof Error ? err.message : "unknown");
+    return [];
+  }
 }
