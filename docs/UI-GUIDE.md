@@ -84,6 +84,18 @@ Mode gelap ada (tombol tema di header). Turunkan token gelap dari `--dark` dan u
 
 Pakai token dan komponen yang sama: kartu putih, border `--line`, label mono, angka besar tracking rapat. Struktur dashboard bisa mengikuti shadcn (sidebar + konten), dengan gaya mengikuti token di atas.
 
+## Cangkang console
+
+Dipakai oleh panel user (`src/app/(panel)`) dan admin (`src/app/(admin)/admin`) lewat `src/components/console/console-shell.tsx`. Pola tata letak dari shadcn dashboard (lihat `THIRD_PARTY_NOTICES.md`), warna tetap token Aedoxy.
+
+- **Sidebar inset**, bisa diciutkan ke ikon (`collapsible="icon"`). Latar `--sidebar` = `--bg-alt` (sedikit lebih gelap dari area konten `--bg`). Item aktif berupa pil `--surface` dengan garis tipis `--line`. Status buka/tutup disimpan di cookie `sidebar_state`.
+- **Header**: tombol sidebar, judul halaman (dari konfigurasi menu menurut path), lalu di kanan tombol cari (Ctrl/Cmd+K, hanya item menu peran itu) dan tombol tema.
+- **Grup menu**: konfigurasi bertipe di `src/navigation/user-nav.ts` dan `admin-nav.ts`. Tambah halaman baru dengan menambah item di sana; tes memastikan setiap `href` punya `page.tsx`. Item ber-sub-menu terbuka otomatis bila salah satu anaknya aktif, dan menjadi dropdown saat sidebar diciutkan.
+- **Kartu footer** (hilang saat diciutkan): user melihat paket aktif dan sisa waktu, admin melihat pool tersedia. Di bawahnya `NavUser` (avatar inisial, dropdown akun, keluar).
+- **Konten**: `<main id="main">` di dalam `SidebarInset`, padding `p-4 md:p-6`. Jangan membungkus lagi dengan `container-x`.
+- **Gerbang**: seluruh cangkang dirender hanya setelah `requireSession`/`requireAdmin` selesai. `ShellFallback` sengaja netral (tanpa label menu, nama, atau teks per peran).
+- Pasangan teks sidebar lolos kontras AA di terang dan gelap karena memakai token yang sama dengan konten.
+
 ## Gerak
 
 - Elemen muncul saat di-scroll (fade + naik sedikit). Inilah sebabnya screenshot full-page tanpa scroll terlihat kosong.

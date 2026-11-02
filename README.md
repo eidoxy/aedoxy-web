@@ -6,6 +6,8 @@ Next.js app for aedoxy.com: public marketing site now, panel and admin later. Sp
 
 Wave 1: design system, marketing layout, `/`, `/models`, `/pricing`, mock catalog, env validation, Drizzle schema. Auth, Poketo, worker, panel and admin are not built yet.
 
+Third-party licences: see `THIRD_PARTY_NOTICES.md`.
+
 ## Commands (Bun)
 
 ```
