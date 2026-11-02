@@ -199,6 +199,9 @@ Sesuai `gateway-aedoxy/AGENTS.md`: transaksi ini wajib diuji di SQLite, MySQL, d
 | `GET /api/subscription/admin/users/:id/subscriptions` | `billing:read` | Paket aktif dan sisa kredit di panel, rekonsiliasi sisa kredit |
 | `GET/POST/PUT/PATCH /api/subscription/admin/plans` | `billing:read/write` | Sinkronisasi paket (F05) |
 | `POST /api/subscription/admin/user_subscriptions/:id/invalidate` | `billing:write` | Refund manual |
+| `GET /api/group/` | `group:read` | Daftar grup untuk field "Grup setelah beli" di form paket (F05). Tanpa scope ini token bridge mendapat 403 dan pilihan grup nonaktif |
+
+Scope minimum token akun layanan `aedoxy-bridge`: `user:read`, `user:write`, `billing:read`, `billing:write`, `group:read`.
 
 ### 7.3 Pengaturan New API yang wajib
 
