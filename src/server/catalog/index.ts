@@ -1,35 +1,74 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/server/db/client";
+import { modelMeta } from "@/server/db/schema";
 import { getPublicActivity } from "@/server/domain/activity";
 import { getDisplayFx } from "@/server/domain/fx-rate";
-import { mockCatalog } from "./mock";
-import type { CatalogSource } from "./types";
+import { fetchPricing } from "@/server/integrations/newapi";
+import { buildCatalog, type BuiltCatalog } from "./models";
+import { loadPlans } from "./plans";
+import type { Announcement, Model, Plan, Provider, RankingEntry, Stats } from "./types";
 
 export type * from "./types";
 
-/** Swap this line for the real source when the DB and New API client exist. */
-const source: CatalogSource = mockCatalog;
-
 // F08: public pages are cached; models refresh hourly, plans/fx/activity sooner.
 
-export async function getPlans() {
+const warn = (what: string, err: unknown) => console.warn(`[catalog] ${what}`, err instanceof Error ? err.message : "unknown");
+
+export async function getPlans(): Promise<Plan[]> {
   "use cache";
   cacheLife("minutes");
-  return source.getPlans();
+  try {
+    return await loadPlans();
+  } catch (err) {
+    // Without a database the public pages still render, with no plans.
+    warn("plans unavailable", err);
+    return [];
+  }
 }
 
-export async function getProviders() {
+export type Catalog = Pick<BuiltCatalog, "models" | "providers"> & {
+  /** ok = fresh from New API; stale = New API unreachable, last good data shown; unavailable = nothing to show. */
+  state: "ok" | "stale" | "unavailable";
+};
+
+// shortcut: last good catalog kept per process only (lost on restart); persist it if New API outages across restarts matter.
+let lastGood: Pick<BuiltCatalog, "models" | "providers"> | null = null;
+
+/**
+ * Models + providers: New API GET /api/pricing merged with model_meta, cached for an hour.
+ * When New API cannot be reached the last good data is returned, and a short cache window keeps
+ * the failure from sticking for an hour. /admin/models expires the "models" tag.
+ */
+export async function getCatalog(): Promise<Catalog> {
   "use cache";
-  cacheLife("hours");
-  return source.getProviders();
+  cacheTag("models");
+  try {
+    const [pricing, metas] = await Promise.all([fetchPricing(), db.select().from(modelMeta)]);
+    const built = buildCatalog(pricing, metas);
+    if (pricing.skipped > 0) console.warn(`[catalog] ${pricing.skipped} pricing entries had an unexpected shape and were skipped`);
+    if (built.unsupported.length > 0) {
+      const reasons = [...new Set(built.unsupported.map((u) => u.reason))].join("; ");
+      console.warn(`[catalog] credit cost not shown for ${built.unsupported.length} model(s): ${reasons}`);
+    }
+    lastGood = { models: built.models, providers: built.providers };
+    cacheLife("hours");
+    return { ...lastGood, state: "ok" };
+  } catch (err) {
+    warn("models unavailable", err);
+    cacheLife({ stale: 30, revalidate: 30, expire: 60 });
+    return lastGood ? { ...lastGood, state: "stale" } : { models: [], providers: [], state: "unavailable" };
+  }
 }
 
-export async function getModels() {
-  "use cache";
-  cacheLife("hours");
-  return source.getModels();
+export async function getProviders(): Promise<Provider[]> {
+  return (await getCatalog()).providers;
 }
 
-/** Real data (fx_settings / fx_rates), not the mock. /admin/fx expires the "fx" tag on every change. */
+export async function getModels(): Promise<Model[]> {
+  return (await getCatalog()).models;
+}
+
+/** Real data (fx_settings / fx_rates). /admin/fx expires the "fx" tag on every change. */
 export async function getFxRate() {
   "use cache";
   cacheLife("hours");
@@ -43,22 +82,20 @@ export async function getFxRate() {
   }
 }
 
-export async function getStats() {
-  "use cache";
-  cacheLife("minutes");
-  return source.getStats();
+/** Counts only. No usage figures (tokens, developers) exist yet, so none are shown. */
+export async function getStats(): Promise<Stats> {
+  const [catalog, plans] = await Promise.all([getCatalog(), getPlans()]);
+  return { models: catalog.models.length, providers: catalog.providers.length, plans: plans.length };
 }
 
-export async function getAnnouncement() {
-  "use cache";
-  cacheLife("minutes");
-  return source.getAnnouncement();
+/** No source yet: the bar stays hidden rather than showing invented text. */
+export async function getAnnouncement(): Promise<Announcement | null> {
+  return null;
 }
 
-export async function getRankings() {
-  "use cache";
-  cacheLife("hours");
-  return source.getRankings();
+/** No usage data yet, so the rankings section stays hidden (UI-GUIDE section 7). */
+export async function getRankings(): Promise<RankingEntry[]> {
+  return [];
 }
 
 /** Real feed (F07). Cached 30 s; opt-out and admin changes expire the "activity" tag. */

@@ -10,12 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FxFootnote } from "@/components/usd-idr";
-import { formatIdr, formatTokens, formatUsd } from "@/lib/format";
-import { usdToIdr } from "@/lib/fx";
-import { filterModels, savingPercent, sortModels, type ModelSort } from "@/lib/models";
+import { FxFootnote, UsdIdr } from "@/components/usd-idr";
+import { formatTokens, formatUsd } from "@/lib/format";
+import { filterModels, outputPerPlan, savingPercent, sortModels, type ModelSort } from "@/lib/models";
 import { cn } from "@/lib/utils";
-import type { Capability, FxRate, Model, ModelStatus, Provider } from "@/server/catalog/types";
+import type { Capability, FxRate, Model, ModelStatus, Plan, Provider } from "@/server/catalog/types";
 
 const CAPABILITY: Record<Capability, { label: string; icon: LucideIcon }> = {
   text: { label: "Teks", icon: Type },
@@ -76,7 +75,18 @@ function FilterSelect<T extends string>({
   );
 }
 
-export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]; models: Model[]; fx: FxRate | null }) {
+export function ModelsCatalog({
+  providers,
+  models,
+  fx,
+  plan,
+}: {
+  providers: Provider[];
+  models: Model[];
+  fx: FxRate | null;
+  /** Plan used for the "≈ output per plan" column; the column is left out without one. */
+  plan: Pick<Plan, "name" | "creditUsd"> | null;
+}) {
   const [query, setQuery] = useState("");
   const [providerId, setProviderId] = useState("all");
   const [capability, setCapability] = useState<Capability | "all">("all");
@@ -124,9 +134,13 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
 
   // Rupiah appears only here, on provider list prices (F04/F08); credit cost stays in $.
   const officialPair = (inUsd: number, outUsd: number) =>
-    showIdr && fx
-      ? `≈ ${formatIdr(usdToIdr(inUsd, fx))} / ${formatIdr(usdToIdr(outUsd, fx))}`
-      : `${formatUsd(inUsd)} / ${formatUsd(outUsd)}`;
+    showIdr ? (
+      <>
+        <UsdIdr usd={inUsd} fx={fx} /> / <UsdIdr usd={outUsd} fx={fx} />
+      </>
+    ) : (
+      `${formatUsd(inUsd)} / ${formatUsd(outUsd)}`
+    );
 
   function reset() {
     setQuery("");
@@ -229,7 +243,8 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
           </div>
         )}
         {groups.map(({ provider, models: rows }, gi) => {
-          const from = Math.min(...rows.map((m) => m.creditInputUsdPerM));
+          const inputs = rows.flatMap((m) => (m.creditInputUsdPerM === null ? [] : [m.creditInputUsdPerM]));
+          const from = inputs.length > 0 ? Math.min(...inputs) : null;
           return (
             <section
               key={provider.id}
@@ -247,7 +262,7 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
                       {provider.name}
                     </h2>
                     <p className="mt-1 font-mono text-[11px] tracking-wider text-fg-muted uppercase">
-                      {rows.length} model · mulai {formatUsd(from)} / 1M
+                      {rows.length} model{from !== null && ` · mulai ${formatUsd(from)} / 1M`}
                     </p>
                   </div>
                 </div>
@@ -264,12 +279,18 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
                       <TableHead className="mono-label h-auto px-4 py-4 font-normal whitespace-normal text-faint">Status</TableHead>
                       <TableHead className="mono-label h-auto px-4 py-4 font-normal whitespace-normal text-faint text-right">Resmi · in / out</TableHead>
                       <TableHead className="mono-label h-auto px-4 py-4 font-normal whitespace-normal text-faint text-right">Biaya kredit / 1M</TableHead>
+                      {plan && (
+                        <TableHead className="mono-label h-auto px-4 py-4 font-normal whitespace-normal text-faint text-right">
+                          ≈ Output per {plan.name} {formatUsd(plan.creditUsd)}
+                        </TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rows.map((m) => {
                       const saving = savingPercent(m);
                       const st = STATUS[m.status];
+                      const perPlan = plan ? outputPerPlan(m, plan.creditUsd) : null;
                       return (
                         <TableRow key={m.id} className="border-line hover:bg-transparent">
                           <TableCell className="px-4 py-3.5 whitespace-normal">
@@ -335,11 +356,26 @@ export function ModelsCatalog({ providers, models, fx }: { providers: Provider[]
                             )}
                           </TableCell>
                           <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap">
-                            <span className="text-sm font-semibold text-heading">{formatUsd(m.creditInputUsdPerM)}</span> <span className="text-faint">in</span>
-                            <span className="block text-fg-soft">
-                              {formatUsd(m.creditOutputUsdPerM)} <span className="text-faint">out</span>
-                            </span>
+                            {m.creditInputUsdPerM !== null && m.creditOutputUsdPerM !== null ? (
+                              <>
+                                <span className="text-sm font-semibold text-heading">{formatUsd(m.creditInputUsdPerM)}</span> <span className="text-faint">in</span>
+                                <span className="block text-fg-soft">
+                                  {formatUsd(m.creditOutputUsdPerM)} <span className="text-faint">out</span>
+                                </span>
+                              </>
+                            ) : m.creditPerRequestUsd !== null ? (
+                              <>
+                                <span className="text-sm font-semibold text-heading">{formatUsd(m.creditPerRequestUsd)}</span> <span className="text-faint">/ request</span>
+                              </>
+                            ) : (
+                              <span className="text-faint">–</span>
+                            )}
                           </TableCell>
+                          {plan && (
+                            <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap text-fg-soft">
+                              {perPlan ? `${formatTokens(perPlan.count)} ${perPlan.unit}` : <span className="text-faint">–</span>}
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}

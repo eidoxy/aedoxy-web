@@ -28,10 +28,10 @@ Copy `.env.example` to `.env.local`. All integration variables are optional unti
 
 ```
 src/app/(marketing)/   landing, models, pricing, [stub] placeholders
-src/app/api/public/    activity feed (mock)
+src/app/api/public/    activity feed (real, rate limited)
 src/components/        brand/, marketing/, ui/ (shadcn)
-src/lib/               pure helpers (format, fx, models, activity) + tests
-src/server/catalog/    typed contracts + mock source (swap in ./index.ts)
+src/lib/               pure helpers (format, fx, models, model-cost, activity) + tests
+src/server/catalog/    typed contracts + real sources (plans, New API models); cached in ./index.ts
 src/server/db/         Drizzle schema (TRD section 6, without Better Auth tables)
 src/env.ts             Zod-validated environment
 ```
@@ -41,4 +41,4 @@ src/env.ts             Zod-validated environment
 - No prices, counts or stats in components. They come from `src/server/catalog`.
 - Rupiah from dollars only through `<UsdIdr>` (display hint, never an order amount).
 - Provider logos come from `src/components/brand/icons.ts` (see the comment there).
-- Mock data in `src/server/catalog/mock.ts` is illustrative. Do not ship it.
+- Model credit cost (`src/lib/model-cost.ts`): USD per 1M input tokens = `model_ratio` x group ratio x 1,000,000 / 500,000, output = input x `completion_ratio`, fixed price = `model_price` x group ratio per request (gateway-aedoxy `service/text_quota.go`, `relay/helper/price.go`, `common/constants.go`); billing expressions show "-". Never converted with an FX rate.

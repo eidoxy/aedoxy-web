@@ -26,6 +26,7 @@ const model = (over: Partial<Model> = {}): Model => ({
   officialOutputUsdPerM: 4,
   creditInputUsdPerM: 1,
   creditOutputUsdPerM: 1,
+  creditPerRequestUsd: null,
   ...over,
 });
 

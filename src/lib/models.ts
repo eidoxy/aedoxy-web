@@ -23,20 +23,41 @@ export function filterModels(models: Model[], f: ModelFilter): Model[] {
 /** Output-weighted blend assuming 3 input tokens per 1 output token. */
 const blend = (input: number, output: number) => (3 * input + output) / 4;
 
-export const blendedCredit = (m: Model) => blend(m.creditInputUsdPerM, m.creditOutputUsdPerM);
+/** Null for per-request and unsupported billing: there is no token price to blend. */
+export const blendedCredit = (m: Model): number | null =>
+  m.creditInputUsdPerM === null || m.creditOutputUsdPerM === null ? null : blend(m.creditInputUsdPerM, m.creditOutputUsdPerM);
+
+/** Models without a token price sort last in both directions. */
+const byCredit = (dir: 1 | -1) => (a: Model, b: Model) => {
+  const x = blendedCredit(a);
+  const y = blendedCredit(b);
+  if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+  return dir * (x - y);
+};
 
 export function sortModels(models: Model[], sort: ModelSort): Model[] {
   const copy = [...models];
   switch (sort) {
     case "price-asc":
-      return copy.sort((a, b) => blendedCredit(a) - blendedCredit(b));
+      return copy.sort(byCredit(1));
     case "price-desc":
-      return copy.sort((a, b) => blendedCredit(b) - blendedCredit(a));
+      return copy.sort(byCredit(-1));
     case "context":
       return copy.sort((a, b) => (b.contextIn ?? 0) - (a.contextIn ?? 0));
     default:
       return copy.sort((a, b) => a.id.localeCompare(b.id));
   }
+}
+
+/**
+ * What `creditUsd` of plan credit buys of this model if it were spent on output only: output tokens
+ * (credit / output price per 1M), or requests for fixed-price models. Input tokens are billed from
+ * the same credit, so real use gets fewer output tokens. Null when the price is unknown or zero.
+ */
+export function outputPerPlan(m: Model, creditUsd: number): { unit: "token" | "request"; count: number } | null {
+  if (m.creditOutputUsdPerM !== null && m.creditOutputUsdPerM > 0) return { unit: "token", count: Math.floor((creditUsd / m.creditOutputUsdPerM) * 1_000_000) };
+  if (m.creditPerRequestUsd !== null && m.creditPerRequestUsd > 0) return { unit: "request", count: Math.floor(creditUsd / m.creditPerRequestUsd) };
+  return null;
 }
 
 /**
@@ -48,7 +69,8 @@ export function sortModels(models: Model[], sort: ModelSort): Model[] {
 export function savingPercent(m: Model): number | null {
   if (m.officialInputUsdPerM === null || m.officialOutputUsdPerM === null) return null;
   const official = blend(m.officialInputUsdPerM, m.officialOutputUsdPerM);
-  if (official <= 0) return null;
-  const pct = Math.round((1 - blendedCredit(m) / official) * 100);
+  const credit = blendedCredit(m);
+  if (official <= 0 || credit === null) return null;
+  const pct = Math.round((1 - credit / official) * 100);
   return pct > 0 ? pct : null;
 }

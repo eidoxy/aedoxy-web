@@ -1,7 +1,7 @@
 /**
- * Catalog contracts. UI code depends on these types only. The mock source in
- * ./mock.ts is replaced later by the real one (plans/promos/fx from the
- * aedoxy DB, models from New API GET /api/pricing + model_meta; see F05, F08).
+ * Catalog contracts. UI code depends on these types only. Plans, fx and the
+ * activity feed come from the aedoxy DB; models from New API GET /api/pricing
+ * merged with model_meta (see ./index.ts, F05, F08).
  */
 
 export type PlanPeriod = "weekly" | "monthly" | "custom";
@@ -49,9 +49,11 @@ export interface Model {
   /** Provider list price, USD per 1M tokens. Null when unknown. */
   officialInputUsdPerM: number | null;
   officialOutputUsdPerM: number | null;
-  /** What Aedoxy deducts from plan credit, USD per 1M tokens. */
-  creditInputUsdPerM: number;
-  creditOutputUsdPerM: number;
+  /** What Aedoxy deducts from plan credit, USD per 1M tokens. Null when the model is not billed per token or the mode is not supported (see lib/model-cost.ts). */
+  creditInputUsdPerM: number | null;
+  creditOutputUsdPerM: number | null;
+  /** Fixed credit per request in USD, for models billed per request. */
+  creditPerRequestUsd: number | null;
 }
 
 export interface ActivityItem {
@@ -100,14 +102,4 @@ export interface RankingEntry {
   /** Week-over-week change in percent, null when not comparable. */
   changePct: number | null;
   isNew: boolean;
-}
-
-export interface CatalogSource {
-  getPlans(): Promise<Plan[]>;
-  getProviders(): Promise<Provider[]>;
-  getModels(): Promise<Model[]>;
-  getFxRate(): Promise<FxRate | null>;
-  getStats(): Promise<Stats>;
-  getAnnouncement(): Promise<Announcement | null>;
-  getRankings(): Promise<RankingEntry[]>;
 }

@@ -20,6 +20,7 @@ import { retryFulfillmentAction } from "./orders/actions";
 import { createPromoAction, stopPromoAction } from "./promos/actions";
 import { duplicatePlanAction, movePlanAction, savePlanAction, setEnabledAction, setPriceAction } from "./plans/actions";
 import { hideActivityItemAction, saveActivitySettingsAction } from "./activity/actions";
+import { saveModelMetaAction } from "./models/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
 import { GET as exportLedger } from "./pool/export/route";
 
@@ -37,6 +38,7 @@ const actions = {
   stopPromoAction,
   saveActivitySettingsAction,
   hideActivityItemAction,
+  saveModelMetaAction,
 };
 const plain = { duplicatePlanAction, movePlanAction };
 

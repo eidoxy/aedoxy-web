@@ -171,6 +171,79 @@ export async function upsertPlan(plan: NewApiPlanInput, planId?: number | null):
   return id;
 }
 
+/**
+ * One entry of GET /api/pricing (gateway-aedoxy model/pricing.go `Pricing`).
+ * Only the fields the catalog needs; the rest is dropped by Zod.
+ */
+const pricingItem = z.object({
+  model_name: z.string().min(1),
+  vendor_id: z.number().int().optional(),
+  /** 0 = billed per token (ratios), 1 = fixed price per request. */
+  quota_type: z.number().int(),
+  model_ratio: z.number(),
+  model_price: z.number(),
+  completion_ratio: z.number(),
+  enable_groups: z.array(z.string()).default([]),
+  billing_mode: z.string().optional(),
+  billing_expr: z.string().optional(),
+});
+export type PricingItem = z.infer<typeof pricingItem>;
+
+const pricingEnvelope = z.object({
+  success: z.boolean(),
+  data: z.array(z.unknown()).default([]),
+  vendors: z.array(z.object({ id: z.number().int(), name: z.string() })).nullish(),
+  group_ratio: z.record(z.string(), z.number()).nullish(),
+});
+
+export type NewApiPricing = {
+  items: PricingItem[];
+  /** Vendor id -> display name. */
+  vendors: Map<number, string>;
+  groupRatio: Record<string, number>;
+  /** Entries of `data` that did not match the expected shape and were left out. */
+  skipped: number;
+};
+
+/**
+ * GET /api/pricing. The endpoint is public, so the request goes out WITHOUT the
+ * bridge token: a token would make New API answer for the service account's
+ * group instead of an ordinary visitor. Throws NewApiError on any failure.
+ */
+export async function fetchPricing(): Promise<NewApiPricing> {
+  const baseUrl = env.NEWAPI_INTERNAL_URL ?? env.NEWAPI_PUBLIC_URL;
+  let res: Response;
+  try {
+    res = await fetch(new URL("/api/pricing", baseUrl), { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
+  } catch (err) {
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    throw new NewApiError(timedOut ? "timeout" : "network", timedOut ? "Pricing request timed out" : "Pricing request failed");
+  }
+  if (!res.ok) throw new NewApiError("http", `Pricing returned HTTP ${res.status}`, res.status);
+
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    throw new NewApiError("invalid_response", "Pricing returned invalid JSON", res.status);
+  }
+  const envelope = pricingEnvelope.safeParse(json);
+  if (!envelope.success) throw new NewApiError("invalid_response", "Pricing response has an unexpected shape", res.status);
+  if (!envelope.data.success) throw new NewApiError("rejected", "Pricing request was rejected", res.status);
+
+  const items: PricingItem[] = [];
+  for (const raw of envelope.data.data) {
+    const item = pricingItem.safeParse(raw);
+    if (item.success) items.push(item.data);
+  }
+  return {
+    items,
+    vendors: new Map((envelope.data.vendors ?? []).map((v) => [v.id, v.name])),
+    groupRatio: envelope.data.group_ratio ?? {},
+    skipped: envelope.data.data.length - items.length,
+  };
+}
+
 const fulfillResponse = z.union([
   z.object({
     success: z.literal(true),

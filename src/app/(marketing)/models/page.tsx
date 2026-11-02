@@ -1,7 +1,8 @@
 import { Info } from "lucide-react";
 import type { Metadata } from "next";
 import { ModelsCatalog } from "@/components/marketing/models-catalog";
-import { getFxRate, getModels, getProviders, getStats } from "@/server/catalog";
+import { featuredPlan } from "@/lib/plans";
+import { getCatalog, getFxRate, getPlans } from "@/server/catalog";
 
 export const metadata: Metadata = {
   title: "Katalog model",
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ModelsPage() {
-  const [providers, models, fx, stats] = await Promise.all([getProviders(), getModels(), getFxRate(), getStats()]);
+  const [{ providers, models, state }, fx, plans] = await Promise.all([getCatalog(), getFxRate(), getPlans()]);
+  const plan = featuredPlan(plans);
 
   return (
     <>
@@ -31,18 +33,32 @@ export default async function ModelsPage() {
           </div>
           <dl className="flex gap-10">
             <div>
-              <dd className="text-5xl leading-none font-medium tracking-[-0.04em] text-heading">{stats.models}</dd>
+              <dd className="text-5xl leading-none font-medium tracking-[-0.04em] text-heading">{models.length}</dd>
               <dt className="mono-label mt-2">Model</dt>
             </div>
             <div>
-              <dd className="text-5xl leading-none font-medium tracking-[-0.04em] text-heading">{stats.providers}</dd>
+              <dd className="text-5xl leading-none font-medium tracking-[-0.04em] text-heading">{providers.length}</dd>
               <dt className="mono-label mt-2">Provider</dt>
             </div>
           </dl>
         </div>
       </section>
       <section className="container-x py-10 sm:py-12">
-        <ModelsCatalog providers={providers} models={models} fx={fx} />
+        {state === "stale" && (
+          <p role="status" className="mb-6 rounded-xl border border-line bg-alt p-4 text-sm text-fg-soft">
+            Data harga terbaru belum bisa dimuat. Daftar di bawah adalah data terakhir yang berhasil diambil.
+          </p>
+        )}
+        {models.length === 0 ? (
+          <div className="rounded-card-lg border border-line bg-surface p-10 text-center">
+            <p className="text-heading">Daftar model belum tersedia.</p>
+            <p className="mt-2 text-sm text-fg-muted">
+              {state === "unavailable" ? "Data model belum bisa dimuat saat ini. Coba lagi beberapa saat lagi." : "Belum ada model yang ditampilkan."}
+            </p>
+          </div>
+        ) : (
+          <ModelsCatalog providers={providers} models={models} fx={fx} plan={plan} />
+        )}
       </section>
     </>
   );
