@@ -9,6 +9,7 @@ import { formatIdr } from "@/lib/format";
 import { planToFormValues } from "@/lib/schemas/plan";
 import { requireAdmin } from "@/server/admin";
 import { getAdminPlan } from "@/server/domain/admin-plans";
+import { listGroups } from "@/server/integrations/newapi";
 
 export const metadata: Metadata = { title: "Ubah paket" };
 
@@ -24,7 +25,7 @@ async function EditPlan({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
   const planId = /^\d{1,9}$/.test(id) ? Number(id) : NaN;
-  const plan = Number.isSafeInteger(planId) ? await getAdminPlan(planId) : null;
+  const [plan, groups] = await Promise.all([Number.isSafeInteger(planId) ? getAdminPlan(planId) : null, listGroups().catch(() => null)]);
   if (!plan) notFound();
 
   return (
@@ -35,7 +36,7 @@ async function EditPlan({ params }: { params: Promise<{ id: string }> }) {
         <Stat label="Pendapatan" value={formatIdr(plan.revenueIdr)} />
         <Stat label="Sinkron" value={plan.synced ? "Ya" : "Belum"} tone={plan.synced ? "success" : "danger"} hint={plan.newapiPlanId ? `ID New API ${plan.newapiPlanId}` : "Belum ada di New API"} />
       </div>
-      <PlanForm planId={plan.id} values={planToFormValues(plan)} enabled={plan.enabled} sold={plan.paidCount > 0} />
+      <PlanForm planId={plan.id} values={planToFormValues(plan)} enabled={plan.enabled} sold={plan.paidCount > 0} groups={groups} />
     </div>
   );
 }

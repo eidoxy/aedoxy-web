@@ -171,6 +171,20 @@ export async function upsertPlan(plan: NewApiPlanInput, planId?: number | null):
   return id;
 }
 
+const groupsResponse = z.union([
+  z.object({ success: z.literal(true), data: z.array(z.string()) }),
+  z.object({ success: z.literal(false), message: z.string().optional() }),
+]);
+
+/** Group names defined in the console (GET /api/group/, admin auth), sorted, without blanks or duplicates. */
+export async function listGroups(): Promise<string[]> {
+  const { json, status } = await call("GET", "/api/group/");
+  const parsed = groupsResponse.safeParse(json);
+  if (!parsed.success) throw new NewApiError("invalid_response", "Bridge response has an unexpected shape", status);
+  if (!parsed.data.success) throw new NewApiError("rejected", "Bridge rejected the request", status);
+  return [...new Set(parsed.data.data.map((g) => g.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
 /**
  * One entry of GET /api/pricing (gateway-aedoxy model/pricing.go `Pricing`).
  * Only the fields the catalog needs; the rest is dropped by Zod.

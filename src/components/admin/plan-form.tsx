@@ -11,8 +11,52 @@ import { FormResult, TotpField } from "./totp-field";
 
 const input = "h-9 bg-background";
 
+const GROUP_HINT =
+  "Grup di console New API yang dipasang ke akun pembeli selama paket aktif, lalu dikembalikan saat paket berakhir. Mengatur rasio harga dan model yang boleh dipakai. Grup dibuat dan diatur di console. Kosong = grup akun tidak diubah.";
+
+/**
+ * Group picker. When the console list is missing the select is disabled and a hidden input carries the stored
+ * value, so saving the plan neither clears nor changes the group.
+ */
+function GroupSelect({ groups, current }: { groups: string[] | null; current: string }) {
+  if (groups === null) {
+    return (
+      <>
+        <input type="hidden" name="upgradeGroup" value={current} />
+        <NativeSelect id="upgradeGroup" disabled value={current} onChange={() => {}}>
+          <option value={current}>{current || "Tanpa perubahan grup"}</option>
+        </NativeSelect>
+        <p role="status" className="mt-1 flex items-start gap-1.5 text-xs text-warn">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          Daftar grup tidak bisa dimuat dari console. Perubahan grup ditunda.
+        </p>
+      </>
+    );
+  }
+  const missing = current !== "" && !groups.includes(current);
+  return (
+    <>
+      <NativeSelect id="upgradeGroup" name="upgradeGroup" defaultValue={current}>
+        <option value="">Tanpa perubahan grup</option>
+        {missing && <option value={current}>{current} (tidak ditemukan di console)</option>}
+        {groups.map((g) => (
+          <option key={g} value={g}>
+            {g}
+          </option>
+        ))}
+      </NativeSelect>
+      {missing && (
+        <p role="status" className="mt-1 flex items-start gap-1.5 text-xs text-warn">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          Grup &ldquo;{current}&rdquo; tidak ada lagi di console. Pilih grup lain, atau biarkan bila memang disengaja.
+        </p>
+      )}
+    </>
+  );
+}
+
 /** Create / edit form. `values` are strings as the form shows them (planToFormValues). */
-export function PlanForm({ planId, values, enabled, sold }: { planId?: number; values: Record<string, string>; enabled: boolean; sold: boolean }) {
+export function PlanForm({ planId, values, enabled, sold, groups }: { planId?: number; values: Record<string, string>; enabled: boolean; sold: boolean; groups: string[] | null }) {
   const [state, action, pending] = useActionState<AdminFormState, FormData>(savePlanAction, {});
   const [period, setPeriod] = useState(values.period || "monthly");
   const fe = state.fieldErrors ?? {};
@@ -32,8 +76,8 @@ export function PlanForm({ planId, values, enabled, sold }: { planId?: number; v
         <Field label="Badge" htmlFor="badge" hint="Contoh: Terlaris, Promo." error={fe.badge?.[0]}>
           <Input id="badge" name="badge" defaultValue={v("badge")} maxLength={24} className={input} />
         </Field>
-        <Field label="Grup setelah beli" htmlFor="upgradeGroup" hint="Opsional. Untuk rate limit dan akses model." error={fe.upgradeGroup?.[0]}>
-          <Input id="upgradeGroup" name="upgradeGroup" defaultValue={v("upgradeGroup")} maxLength={64} className={input} />
+        <Field label="Grup setelah beli" htmlFor="upgradeGroup" hint={GROUP_HINT} error={fe.upgradeGroup?.[0]}>
+          <GroupSelect groups={groups} current={v("upgradeGroup")} />
         </Field>
       </Card>
 

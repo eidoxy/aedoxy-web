@@ -6,7 +6,7 @@ import { z } from "zod";
 import { parsePlanForm } from "@/lib/schemas/plan";
 import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
 import { formStrings, toActionError, type AdminFormState } from "@/server/admin-action";
-import { createPlan, duplicatePlan, movePlan, pushSortOrdersBestEffort, setPlanEnabled, setPlanPrice, syncPlansBestEffort, updatePlan } from "@/server/domain/admin-plans";
+import { assertUpgradeGroupAllowed, createPlan, duplicatePlan, movePlan, pushSortOrdersBestEffort, setPlanEnabled, setPlanPrice, syncPlansBestEffort, updatePlan } from "@/server/domain/admin-plans";
 import { AdminError } from "@/server/domain/audit";
 
 const SYNC_FAILED = "Tersimpan, tetapi sinkron ke New API gagal. Paket belum bisa dibeli sampai sinkron berhasil (dicoba ulang tiap jam).";
@@ -31,6 +31,7 @@ export async function savePlanAction(_prev: AdminFormState, formData: FormData):
   let syncFailed = false;
   try {
     await requireFreshTotp(raw.totp ?? "");
+    await assertUpgradeGroupAllowed(parsed.data.upgradeGroup, existingId?.data);
     const actor = await getAdminActor(session);
     if (!existingId || raw.intent === "save_as_new") {
       const plan = await createPlan(actor, parsed.data);

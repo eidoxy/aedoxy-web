@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import type { PlanInput } from "@/lib/schemas/plan";
 import { db, type Tx } from "@/server/db/client";
 import { orders, plans } from "@/server/db/schema";
+import { listGroups } from "@/server/integrations/newapi";
 import { AdminError, writeAudit, type Actor } from "./audit";
 import { isPlanSynced } from "./plan-sellable";
 import { syncPlan } from "./plan-sync";
@@ -74,6 +75,24 @@ async function lockPlan(tx: Tx, id: number) {
 async function hasPaidOrders(tx: Tx, planId: number) {
   const [row] = await tx.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(orders).where(and(eq(orders.planId, planId), eq(orders.status, "paid")));
   return row.n > 0;
+}
+
+/**
+ * A changed, non-empty "group after purchase" must exist in the console. An unchanged value always passes
+ * (the console may be down, or the group renamed there), and so does clearing it. `planId` is the plan being
+ * edited, or the source of "save as new".
+ */
+export async function assertUpgradeGroupAllowed(next: string | null, planId?: number): Promise<void> {
+  if (next === null) return;
+  const [row] = planId ? await db.select({ group: plans.upgradeGroup }).from(plans).where(eq(plans.id, planId)) : [];
+  if (next === (row?.group ?? null)) return;
+  let groups: string[];
+  try {
+    groups = await listGroups();
+  } catch {
+    throw new AdminError("Daftar grup tidak bisa dimuat dari console, jadi grup belum bisa diubah. Simpan tanpa mengubah grup, atau coba lagi nanti.");
+  }
+  if (!groups.includes(next)) throw new AdminError(`Grup "${next}" tidak ada di console New API. Buat dulu di console, lalu pilih dari daftar.`);
 }
 
 export async function createPlan(actor: Actor, input: PlanInput): Promise<PlanRow> {

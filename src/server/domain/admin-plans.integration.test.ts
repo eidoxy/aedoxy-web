@@ -5,6 +5,7 @@ import { db, pool as pgPool } from "@/server/db/client";
 import { adminAuditLog, orders, plans } from "@/server/db/schema";
 import { installFakeServers, prepareDatabase, resetDatabase, seedPlan, seedPool, seedUser } from "@/server/test/helpers";
 import {
+  assertUpgradeGroupAllowed,
   createPlan,
   duplicatePlan,
   listAdminPlans,
@@ -17,6 +18,7 @@ import {
   updatePlan,
 } from "./admin-plans";
 import { AdminError } from "./audit";
+import { listGroups } from "@/server/integrations/newapi";
 import { createPlanOrder, OrderError } from "./orders";
 import { retryUnsyncedPlans, syncPlan } from "./plan-sync";
 
@@ -73,7 +75,8 @@ describe("syncedFieldsChanged", () => {
   const base = { name: "A", subtitle: null, durationUnit: "day", durationValue: 30, creditQuota: 1, upgradeGroup: null, maxPurchasePerUser: 0, enabled: true, sortOrder: 1 } as const;
   it("is false for nothing and true for each mirrored field", () => {
     expect(syncedFieldsChanged(base, { ...base })).toBe(false);
-    expect(syncedFieldsChanged(base, { ...base, sortOrder: 2 })).toBe(false); // display order is not mirrored
+    const reordered = { ...base, sortOrder: 2 };
+    expect(syncedFieldsChanged(base, reordered)).toBe(false); // display order is not mirrored
     for (const change of [{ name: "B" }, { subtitle: "x" }, { durationValue: 7 }, { creditQuota: 2 }, { upgradeGroup: "g" }, { maxPurchasePerUser: 1 }, { enabled: false }]) {
       expect(syncedFieldsChanged(base, { ...base, ...change })).toBe(true);
     }
@@ -291,6 +294,37 @@ describe("reordering keeps every plan sellable", () => {
 
     expect(fake.state.calls.filter((c) => c.includes("/admin/plans"))).toHaveLength(1); // only B, not stale A
     expect((await rowOf(a.id)).syncedVersion).toBe(1);
+  });
+});
+
+describe("assertUpgradeGroupAllowed", () => {
+  it("listGroups sorts and drops blanks and duplicates", async () => {
+    fake.state.groups = ["vip", " ", "default", "vip"];
+    await expect(listGroups()).resolves.toEqual(["default", "vip"]);
+  });
+
+  it("accepts a group the console lists, rejects an unknown one", async () => {
+    await expect(assertUpgradeGroupAllowed("vip")).resolves.toBeUndefined();
+    await expect(assertUpgradeGroupAllowed("ghost")).rejects.toBeInstanceOf(AdminError);
+  });
+
+  it("accepts the empty option without asking the console", async () => {
+    fake.state.groups = null;
+    await expect(assertUpgradeGroupAllowed(null)).resolves.toBeUndefined();
+    expect(fake.state.calls.filter((c) => c.includes("/api/group/"))).toHaveLength(0);
+  });
+
+  it("with the console down, an unchanged group passes and a changed one is rejected", async () => {
+    const p = await seedPlan({ upgradeGroup: "legacy" });
+    fake.state.groups = null;
+    await expect(assertUpgradeGroupAllowed("legacy", p.id)).resolves.toBeUndefined();
+    await expect(assertUpgradeGroupAllowed("vip", p.id)).rejects.toThrow(/tidak bisa dimuat/);
+    await expect(assertUpgradeGroupAllowed("vip")).rejects.toBeInstanceOf(AdminError);
+  });
+
+  it("an unchanged group that is gone from the console still passes", async () => {
+    const p = await seedPlan({ upgradeGroup: "legacy" });
+    await expect(assertUpgradeGroupAllowed("legacy", p.id)).resolves.toBeUndefined();
   });
 });
 

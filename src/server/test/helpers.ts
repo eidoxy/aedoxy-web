@@ -96,6 +96,8 @@ export function installFakeServers() {
     failFulfill: 0,
     /** Number of upcoming plan upserts that answer success:false. */
     rejectPlan: 0,
+    /** Group names the console lists; null makes GET /api/group/ answer HTTP 500. */
+    groups: ["default", "vip"] as string[] | null,
     /** trade_no -> subscriptions the bridge reports as replaced by that purchase. */
     replacedBy: {} as Record<string, { id: number; remaining: number }[]>,
     fulfillBodies: [] as Record<string, unknown>[],
@@ -157,6 +159,10 @@ export function installFakeServers() {
         const id = planPath[1] ? Number(planPath[1]) : newapiPlans.size + 100;
         newapiPlans.set(id, plan);
         return json({ success: true, message: "", data: { id, ...plan } });
+      }
+
+      if (method === "GET" && url.pathname === "/api/group/") {
+        return state.groups ? json({ success: true, message: "", data: state.groups }) : json({ success: false, message: "down" }, 500);
       }
 
       if (method === "POST" && url.pathname === "/api/aedoxy/fulfill") {
