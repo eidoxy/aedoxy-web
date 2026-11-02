@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/console/page-header";
 import { FormPageSkeleton } from "@/components/console/skeletons";
 import { SectionCard } from "@/components/console/section-card";
+import { BackupCodesCard, ResetTwoFactorCard } from "@/components/admin/two-factor-manage";
 import { TwoFactorSetup } from "@/components/admin/two-factor-setup";
 import { requireAdmin } from "@/server/admin";
 
@@ -25,12 +26,16 @@ async function Security() {
     <div className="space-y-6">
       <PageHeader eyebrow="Admin" title="Keamanan" />
       {enabled ? (
-        <SectionCard
-          title="Autentikasi dua faktor aktif"
-          description="Aksi sensitif (ubah pool, ubah paket, coba lagi fulfillment) meminta kode 6 digit dari aplikasi autentikator Anda, atau salah satu kode cadangan."
-        >
-          <p className="text-sm text-success">2FA aktif untuk akun ini.</p>
-        </SectionCard>
+        <>
+          <SectionCard
+            title="Autentikasi dua faktor aktif"
+            description="Aksi sensitif (ubah pool, ubah paket, coba lagi fulfillment) meminta kode 6 digit dari aplikasi autentikator Anda, atau salah satu kode cadangan."
+          >
+            <p className="text-sm text-success">2FA aktif untuk akun ini.</p>
+          </SectionCard>
+          <BackupCodesCard />
+          <ResetTwoFactorCard />
+        </>
       ) : (
         <SectionCard title="Aktifkan autentikasi dua faktor" description="Halaman admin lain terkunci sampai 2FA aktif.">
           <TwoFactorSetup />

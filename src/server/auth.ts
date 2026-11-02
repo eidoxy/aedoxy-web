@@ -38,7 +38,9 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
 
   // oauthProvider replaces the jwt plugin's /token endpoint (see the plugin docs).
-  disabledPaths: ["/token"],
+  // The three /two-factor paths only need the password over HTTP; the admin security actions call the same
+  // handlers through auth.api after also checking a fresh 2FA code, so the HTTP routes are closed (auth.api is unaffected).
+  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri"],
 
   user: {
     additionalFields: {
