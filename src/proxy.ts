@@ -4,6 +4,7 @@ import { auth } from "@/server/auth";
 import { decideAdminRequest } from "@/server/admin";
 
 const noStore = { "Cache-Control": "no-store" };
+const UNMATCHED_PATH = "/_aedoxy/404";
 
 /**
  * /admin/*: real session check (database lookup, Node.js runtime) before anything is rendered, so a
@@ -24,8 +25,9 @@ export async function proxy(request: NextRequest) {
       return new NextResponse("Service Unavailable", { status: 503, headers: noStore });
     }
     if (decision.kind === "redirect") return NextResponse.redirect(new URL(decision.to, request.url), { headers: noStore });
-    // shortcut: a bare 404 body instead of the styled page; a rewrite to a missing path could not be checked without a running server. Switch once verified.
-    if (decision.kind === "not_found") return new NextResponse("Not Found", { status: 404, headers: { ...noStore, "Content-Type": "text/plain; charset=utf-8" } });
+    // Rewrite to a path no route matches (two segments, so the marketing [stub] route does not catch it): Next answers
+    // 404 with the styled app/not-found.tsx, still without any admin HTML or menu.
+    if (decision.kind === "not_found") return NextResponse.rewrite(new URL(UNMATCHED_PATH, request.url), { status: 404, headers: noStore });
     return NextResponse.next();
   }
 
