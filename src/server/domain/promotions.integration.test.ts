@@ -115,22 +115,25 @@ describe("createPlanOrder with a promotion", () => {
     expect((await promoRow(full.id)).redeemedCount).toBe(1);
   });
 
-  it("per-user limit counts pending orders: the second use is refused until the first order closes", async () => {
+  it("per-user limit: a paid use refuses the second one, a closed unpaid order gives the use back", async () => {
     await addPromo({ code: "SEKALI", perUserLimit: 1 });
-    const u = await seedUser();
-    const first = await createPlanOrder({ userId: u.id, planId: plan.id, promoCode: "SEKALI" });
+    const [paying, closing] = [await seedUser(), await seedUser()];
+    const paid = await createPlanOrder({ userId: paying.id, planId: plan.id, promoCode: "SEKALI" });
+    await settleOrderPaid(paid.orderId);
 
-    const err = await rejection(createPlanOrder({ userId: u.id, planId: plan.id, promoCode: "SEKALI" }));
+    const err = await rejection(createPlanOrder({ userId: paying.id, planId: plan.id, promoCode: "SEKALI" }));
     expect(err).toMatchObject({ code: "PROMO_ALREADY_USED", message: "Kode promo ini sudah Anda pakai." });
 
+    const first = await createPlanOrder({ userId: closing.id, planId: plan.id, promoCode: "SEKALI" });
     await expireOrder(first.orderId);
-    await expect(createPlanOrder({ userId: u.id, planId: plan.id, promoCode: "SEKALI" })).resolves.toBeDefined();
+    await expect(createPlanOrder({ userId: closing.id, planId: plan.id, promoCode: "SEKALI" })).resolves.toBeDefined();
   });
 
   it("an automatic discount the buyer already used is skipped silently instead of failing the order", async () => {
     await addPromo({ kind: "fixed", value: 5_000, perUserLimit: 1 });
     const u = await seedUser();
-    await createPlanOrder({ userId: u.id, planId: plan.id });
+    const firstOrder = await createPlanOrder({ userId: u.id, planId: plan.id });
+    await settleOrderPaid(firstOrder.orderId);
     const second = await createPlanOrder({ userId: u.id, planId: plan.id });
     expect(await orderRow(second.orderId)).toMatchObject({ promotionId: null, discountIdr: 0, amountIdr: 55_000 });
   });

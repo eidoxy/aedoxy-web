@@ -45,7 +45,7 @@ describe("GET /api/orders/[id]/status", () => {
     await settleOrderPaid(orderId);
     await db.update(fulfillments).set({ status: "succeeded" }).where(eq(fulfillments.orderId, orderId));
     res = await call(orderId);
-    expect(await res.json()).toMatchObject({ status: "paid", fulfillment: "succeeded", paidAt: expect.any(String) });
+    expect(await res.json()).toMatchObject({ status: "paid", fulfillment: "succeeded", grantPhase: "active", paidAt: expect.any(String) });
   });
 
   it("answers 404 for another user's order and for a malformed id", async () => {

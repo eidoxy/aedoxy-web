@@ -97,7 +97,7 @@ async function Orders({ searchParams }: { searchParams: SearchParams }) {
                 <TableCell>{o.planName ?? "-"}</TableCell>
                 <TableCell className="text-right font-mono">{formatIdr(o.amountIdr)}</TableCell>
                 <TableCell>
-                  <OrderBadge status={o.status} fulfillment={o.fulfillment} />
+                  <OrderBadge status={o.status} fulfillment={o.fulfillment} grantPhase={o.grantPhase} />
                 </TableCell>
                 <TableCell>
                   {o.fulfillment ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useActionState } from "react";
 import { buyPlan, type BuyPlanState } from "@/app/(panel)/plans/actions";
 import { FormMessage } from "@/components/auth/auth-ui";
@@ -39,6 +40,11 @@ export function PlanBuyForm({ planId, planName, hasActive, disabled, promoCode }
         {disabled ? "Stok habis" : "Beli"}
       </Button>
       <FormMessage tone="error">{state.error}</FormMessage>
+      {state.pendingOrderId && (
+        <Link href={`/orders/${state.pendingOrderId}`} className="text-sm text-primary-ink underline-offset-4 hover:underline">
+          Buka pesanan yang belum dibayar
+        </Link>
+      )}
     </form>
   );
 }

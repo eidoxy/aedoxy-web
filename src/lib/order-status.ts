@@ -6,11 +6,34 @@ export type OrderTone = "pending" | "success" | "danger" | "muted";
 
 export type OrderStateView = { label: string; detail: string; tone: OrderTone; final: boolean };
 
-export function describeOrder(order: { status: OrderStatus; fulfillment: FulfillmentStatus | null }): OrderStateView {
+/** What happened to the subscription an order granted. */
+export type GrantPhase = "active" | "replaced" | "ended";
+
+export type GrantFacts = { endsAt: Date | string; reconciledAt: Date | string | null; replaced: boolean };
+
+/**
+ * Phase of a grant at `nowMs`. `replaced` is true when a newer purchase took the plan over (return of
+ * the unused quota with a `replace_return` ledger row, or reconciled before its natural end).
+ * No grant row: a succeeded fulfillment always writes its grant in the same transaction, so treat it as active.
+ */
+export function grantPhase(grant: GrantFacts | null | undefined, nowMs: number): GrantPhase {
+  if (!grant) return "active";
+  if (grant.replaced) return "replaced";
+  if (grant.reconciledAt || new Date(grant.endsAt).getTime() <= nowMs) return "ended";
+  return "active";
+}
+
+export function describeOrder(order: { status: OrderStatus; fulfillment: FulfillmentStatus | null; grantPhase?: GrantPhase | null }): OrderStateView {
   switch (order.status) {
     case "pending":
       return { label: "Menunggu pembayaran", detail: "Selesaikan pembayaran sebelum waktu habis.", tone: "pending", final: false };
     case "paid":
+      if (order.fulfillment === "succeeded" && order.grantPhase === "replaced") {
+        return { label: "Digantikan paket baru", detail: "Paket ini sudah diganti oleh pembelian paket yang lebih baru.", tone: "muted", final: true };
+      }
+      if (order.fulfillment === "succeeded" && order.grantPhase === "ended") {
+        return { label: "Berakhir", detail: "Masa aktif paket ini sudah selesai. Beli paket lagi bila masih dibutuhkan.", tone: "muted", final: true };
+      }
       if (order.fulfillment === "succeeded") {
         return { label: "Paket aktif", detail: "Pembayaran diterima dan kredit sudah masuk. Buka console untuk membuat API key.", tone: "success", final: true };
       }

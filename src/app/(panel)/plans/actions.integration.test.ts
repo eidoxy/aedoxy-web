@@ -80,6 +80,16 @@ describe("buyPlan", () => {
     expect(await buyPlan({}, form({ planId: "9999" }))).toEqual({ error: "Paket tidak tersedia." });
   });
 
+  it("refuses a second order with the id of the unpaid one", async () => {
+    const { plan } = await setup();
+    await expect(buyPlan({}, form({ planId: String(plan.id) }))).rejects.toThrow(/^REDIRECT /);
+    const [pending] = await db.select().from(orders);
+
+    const state = await buyPlan({}, form({ planId: String(plan.id) }));
+
+    expect(state).toMatchObject({ error: expect.stringMatching(/batalkan pesanan yang belum dibayar/), pendingOrderId: pending.id });
+  });
+
   it("shows the rate-limit message after too many attempts", async () => {
     const { plan } = await setup();
     let last = {} as Awaited<ReturnType<typeof buyPlan>>;
@@ -91,6 +101,6 @@ describe("buyPlan", () => {
       }
     }
     expect(last.error).toMatch(/Terlalu banyak percobaan/);
-    expect((await db.select().from(orders).where(eq(orders.userId, current.userId))).length).toBe(3);
+    expect((await db.select().from(orders).where(eq(orders.userId, current.userId))).length).toBe(1);
   });
 });

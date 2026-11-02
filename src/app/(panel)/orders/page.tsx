@@ -61,7 +61,7 @@ async function Orders() {
                   <TableCell className="font-medium text-heading">{planNameOf(o)}</TableCell>
                   <TableCell className="text-right font-mono">{formatIdr(o.amountIdr)}</TableCell>
                   <TableCell>
-                    <OrderBadge status={o.status} fulfillment={o.fulfillment} />
+                    <OrderBadge status={o.status} fulfillment={o.fulfillment} grantPhase={o.grantPhase} />
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/orders/${o.id}`} className="text-sm font-medium text-primary-ink underline-offset-4 hover:underline">

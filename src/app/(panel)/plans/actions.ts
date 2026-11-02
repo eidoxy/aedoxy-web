@@ -9,6 +9,8 @@ import { requireSession } from "@/server/session";
 
 export type BuyPlanState = {
   error?: string;
+  /** Set with TOO_MANY_PENDING: the unpaid order to finish or cancel first. */
+  pendingOrderId?: string;
   /** Set when the buyer must confirm that their active plan is replaced. */
   needsReplace?: { planName: string; remainingQuota: number; endsAt: string };
 };
@@ -73,7 +75,7 @@ export async function buyPlan(_prev: BuyPlanState, formData: FormData): Promise<
           needsReplace: { planName: err.details.planName, remainingQuota: err.details.remainingQuota, endsAt: err.details.endsAt.toISOString() },
         };
       }
-      return { error: err.message };
+      return { error: err.message, pendingOrderId: err.pendingOrderId };
     }
     console.error("[plans] buy failed", { userId: session.user.id, error: err instanceof Error ? err.message : "unknown" });
     return { error: "Terjadi kesalahan. Coba lagi sebentar lagi." };

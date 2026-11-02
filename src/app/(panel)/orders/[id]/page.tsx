@@ -31,6 +31,7 @@ async function Order({ params }: { params: Promise<{ id: string }> }) {
         paymentUrl: order.paymentUrl,
         status: order.status,
         fulfillment: order.fulfillment,
+        grantPhase: order.grantPhase,
         expiresAt: order.expiresAt.toISOString(),
       }}
     />

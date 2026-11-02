@@ -10,7 +10,7 @@ import { OrderBadge } from "@/components/panel/order-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatIdr } from "@/lib/format";
-import { describeOrder, formatCountdown, secondsLeft, type FulfillmentStatus, type OrderStatus } from "@/lib/order-status";
+import { describeOrder, formatCountdown, secondsLeft, type FulfillmentStatus, type GrantPhase, type OrderStatus } from "@/lib/order-status";
 
 export type TrackedOrder = {
   id: string;
@@ -20,10 +20,11 @@ export type TrackedOrder = {
   paymentUrl: string | null;
   status: OrderStatus;
   fulfillment: FulfillmentStatus | null;
+  grantPhase: GrantPhase;
   expiresAt: string;
 };
 
-type StatusPayload = { status: OrderStatus; fulfillment: FulfillmentStatus | null; expiresAt: string };
+type StatusPayload = { status: OrderStatus; fulfillment: FulfillmentStatus | null; grantPhase: GrantPhase; expiresAt: string };
 
 const POLL_MS = 3_000;
 
@@ -49,7 +50,7 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
   const { data, isError } = useQuery({
     queryKey: ["order-status", order.id],
     queryFn: () => fetchStatus(order.id),
-    initialData: { status: order.status, fulfillment: order.fulfillment, expiresAt: order.expiresAt },
+    initialData: { status: order.status, fulfillment: order.fulfillment, grantPhase: order.grantPhase, expiresAt: order.expiresAt },
     // Light polling that stops by itself once the order reached a final state.
     refetchInterval: (query) => (query.state.data && describeOrder(query.state.data).final ? false : POLL_MS),
   });
@@ -97,7 +98,7 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
               <span className="font-mono text-xs break-all">{order.tradeNo}</span>
             </InfoRow>
             <InfoRow label="Status">
-              <OrderBadge status={data.status} fulfillment={data.fulfillment} />
+              <OrderBadge status={data.status} fulfillment={data.fulfillment} grantPhase={data.grantPhase} />
             </InfoRow>
           </dl>
         </CardContent>

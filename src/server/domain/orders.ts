@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { env } from "@/env";
 import { ensureConsoleAccountForUser } from "@/server/account";
 import { db, type Tx } from "@/server/db/client";
@@ -29,7 +29,8 @@ import {
  */
 
 export const INVOICE_TTL_MINUTES = 15;
-export const MAX_PENDING_ORDERS = 3;
+/** One unpaid order at a time: paying two would make the second replace the first. */
+export const MAX_PENDING_ORDERS = 1;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
@@ -54,6 +55,8 @@ export class OrderError extends Error {
     readonly code: OrderErrorCode,
     message: string,
     readonly details?: ReplaceDetails,
+    /** Set with TOO_MANY_PENDING: the order the buyer must finish or cancel first. */
+    readonly pendingOrderId?: string,
   ) {
     super(message);
     this.name = "OrderError";
@@ -133,12 +136,14 @@ async function createPlanOrderUnchecked(input: CreatePlanOrderInput): Promise<Cr
     // Serialises this user's concurrent orders so the pending and purchase caps cannot be raced.
     await tx.select({ id: user.id }).from(user).where(eq(user.id, userId)).for("update");
 
-    const [{ pending }] = await tx
-      .select({ pending: count() })
+    const pendingRows = await tx
+      .select({ id: orders.id })
       .from(orders)
-      .where(and(eq(orders.userId, userId), eq(orders.status, "pending")));
-    if (pending >= MAX_PENDING_ORDERS) {
-      throw new OrderError("TOO_MANY_PENDING", `Anda punya ${MAX_PENDING_ORDERS} pesanan yang belum dibayar. Selesaikan atau tunggu kedaluwarsa dulu.`);
+      .where(and(eq(orders.userId, userId), eq(orders.status, "pending")))
+      .orderBy(desc(orders.createdAt))
+      .limit(MAX_PENDING_ORDERS);
+    if (pendingRows.length >= MAX_PENDING_ORDERS) {
+      throw new OrderError("TOO_MANY_PENDING", "Selesaikan atau batalkan pesanan yang belum dibayar dulu.", undefined, pendingRows[0].id);
     }
     if (plan.maxPurchasePerUser > 0) {
       const [{ bought }] = await tx

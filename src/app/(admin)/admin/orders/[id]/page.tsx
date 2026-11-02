@@ -39,7 +39,7 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Order" title={order.tradeNo} actions={<OrderBadge status={order.status} fulfillment={f?.status ?? null} />} />
+      <PageHeader eyebrow="Order" title={order.tradeNo} actions={<OrderBadge status={order.status} fulfillment={f?.status ?? null} grantPhase={data.grantPhase} />} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

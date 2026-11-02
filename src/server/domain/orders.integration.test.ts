@@ -11,7 +11,7 @@ import {
   seedPool,
   seedUser,
 } from "@/server/test/helpers";
-import { createPlanOrder, expireOrder, OrderError } from "./orders";
+import { createPlanOrder, expireOrder, OrderError, settleOrderPaid } from "./orders";
 
 const Q = 10_000_000; // plan credit in quota units
 
@@ -100,20 +100,23 @@ describe("createPlanOrder", () => {
     expect(await ledgerCount("release")).toBe(1);
   });
 
-  it("(i) refuses a fourth pending order, then rate-limits the sixth attempt", async () => {
+  it("(i) refuses a second pending order and names the first, then rate-limits the sixth attempt", async () => {
     const plan = await seedPlan({ creditQuota: Q });
     await seedPool(10 * Q);
     const u = await seedUser();
     const buy = () => createPlanOrder({ userId: u.id, planId: plan.id });
 
-    for (let i = 0; i < 3; i++) await buy();
-    expect((await rejection(buy())).code).toBe("TOO_MANY_PENDING");
-    expect((await rejection(buy())).code).toBe("TOO_MANY_PENDING");
+    const first = await buy();
+    for (let i = 0; i < 4; i++) {
+      const err = await rejection(buy());
+      expect(err.code).toBe("TOO_MANY_PENDING");
+      expect(err.pendingOrderId).toBe(first.orderId);
+    }
     expect((await rejection(buy())).code).toBe("RATE_LIMITED");
 
-    expect((await readPool()).reservedQuota).toBe(3 * Q);
+    expect((await readPool()).reservedQuota).toBe(Q);
     const [{ n }] = await db.select({ n: count() }).from(orders);
-    expect(n).toBe(3);
+    expect(n).toBe(1);
   });
 
   it("(i) parallel orders by one user cannot exceed the pending cap", async () => {
@@ -121,8 +124,8 @@ describe("createPlanOrder", () => {
     await seedPool(10 * Q);
     const u = await seedUser();
     const results = await Promise.allSettled([1, 2, 3, 4].map(() => createPlanOrder({ userId: u.id, planId: plan.id })));
-    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
-    expect((await readPool()).reservedQuota).toBe(3 * Q);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect((await readPool()).reservedQuota).toBe(Q);
   });
 
   it("(j) a user with an active plan needs replaceConfirmed", async () => {
@@ -171,7 +174,9 @@ describe("createPlanOrder", () => {
     expect((await readPool()).reservedQuota).toBe(Q); // the rejected attempt reserved nothing
 
     const once = await seedPlan({ creditQuota: Q, maxPurchasePerUser: 1 });
-    await createPlanOrder({ userId: b.id, planId: once.id });
+    const bought = await createPlanOrder({ userId: b.id, planId: once.id });
+    expect((await rejection(createPlanOrder({ userId: b.id, planId: once.id }))).code).toBe("TOO_MANY_PENDING");
+    await settleOrderPaid(bought.orderId); // a paid order counts toward the limit and frees the pending slot
     expect((await rejection(createPlanOrder({ userId: b.id, planId: once.id }))).code).toBe("PURCHASE_LIMIT");
 
     const future = await seedPlan({ creditQuota: Q, saleStartsAt: new Date(Date.now() + 3_600_000) });

@@ -11,7 +11,13 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   if (!order) return Response.json({ error: "not_found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
   return Response.json(
-    { status: order.status, fulfillment: order.fulfillment, expiresAt: order.expiresAt.toISOString(), paidAt: order.paidAt?.toISOString() ?? null },
+    {
+      status: order.status,
+      fulfillment: order.fulfillment,
+      grantPhase: order.grantPhase,
+      expiresAt: order.expiresAt.toISOString(),
+      paidAt: order.paidAt?.toISOString() ?? null,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
