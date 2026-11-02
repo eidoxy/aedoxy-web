@@ -9,12 +9,14 @@ import { PromoCodeBox } from "@/components/panel/promo-code-box";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { FxFootnote, UsdIdr } from "@/components/usd-idr";
+import { buildBuySummary, durationLabel } from "@/lib/buy-summary";
 import { discountPercent, formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { getActivity, getFxRate } from "@/server/catalog";
+import { getPendingOrderId } from "@/server/domain/order-view";
 import { listOnSalePlans } from "@/server/domain/plan-sellable";
 import { getPoolStatus } from "@/server/domain/pool-status";
 import { PromoError, quotePlans, rejectionMessage } from "@/server/domain/promotions";
-import { listActiveSubscriptions } from "@/server/integrations/newapi";
+import { getActiveSubscriptionSummary } from "@/server/domain/user-plan";
 import { requireSession } from "@/server/session";
 
 export const metadata: Metadata = { title: "Paket" };
@@ -27,26 +29,17 @@ export default function PlansPage({ searchParams }: { searchParams: SearchParams
   );
 }
 
-const duration = (p: { durationUnit: "hour" | "day"; durationValue: number }) => `${p.durationValue} ${p.durationUnit === "day" ? "hari" : "jam"}`;
-
-async function hasActivePlan(newapiUserId: number | null) {
-  if (newapiUserId == null) return false;
-  try {
-    return (await listActiveSubscriptions(newapiUserId)).length > 0;
-  } catch {
-    // Console unreachable: the server asks for the confirmation itself if it turns out to be needed.
-    return false;
-  }
-}
+const duration = durationLabel;
 
 async function Plans({ searchParams }: { searchParams: SearchParams }) {
   const { user } = await requireSession();
   const kode = param((await searchParams).kode)?.slice(0, 64);
-  const [onSale, poolStatus, hasActive, fx, activity] = await Promise.all([
+  const [onSale, poolStatus, active, pendingOrderId, fx, activity] = await Promise.all([
     // Only plans that exist in New API can be bought (createPlanOrder enforces it too).
     listOnSalePlans(),
     getPoolStatus(),
-    hasActivePlan(user.newapiUserId ?? null),
+    getActiveSubscriptionSummary(user.newapiUserId ?? null),
+    getPendingOrderId(user.id),
     getFxRate(),
     getActivity(),
   ]);
@@ -143,7 +136,24 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
                     </li>
                   )}
                 </ul>
-                <PlanBuyForm planId={p.id} planName={p.name} hasActive={hasActive} disabled={soldOut} promoCode={appliedCode} />
+                <PlanBuyForm
+                  planId={p.id}
+                  fx={fx}
+                  disabled={soldOut}
+                  promoCode={appliedCode}
+                  summary={buildBuySummary({
+                    name: p.name,
+                    period: p.period,
+                    durationUnit: p.durationUnit,
+                    durationValue: p.durationValue,
+                    creditQuota: p.creditQuota,
+                    finalIdr: price,
+                    strikeIdr: strike,
+                    promo: promo?.promo ? { name: promo.promo.name, code: promo.promo.code, discountIdr: promo.discountIdr } : null,
+                    active,
+                    pendingOrderId,
+                  })}
+                />
               </Card>
               </li>
             );

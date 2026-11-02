@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, pool as pgPool } from "@/server/db/client";
 import { orders, subscriptionGrants } from "@/server/db/schema";
-import { prepareDatabase, resetDatabase, seedPlan, seedPool, seedUser } from "@/server/test/helpers";
-import { getActivePlanForUser, getPoolAvailable } from "./user-plan";
+import { installFakeServers, prepareDatabase, resetDatabase, seedPlan, seedPool, seedUser } from "@/server/test/helpers";
+import { getActivePlanForUser, getActiveSubscriptionSummary, getPoolAvailable } from "./user-plan";
 
 beforeAll(prepareDatabase);
 afterAll(() => pgPool.end());
@@ -47,6 +47,28 @@ describe("getActivePlanForUser", () => {
     expect(await getActivePlanForUser(me.id, now)).toBeNull();
     await grant(me.id, plan.id, "Diganti", days(10), { reconciledAt: now });
     expect(await getActivePlanForUser(me.id, now)).toBeNull();
+  });
+});
+
+describe("getActiveSubscriptionSummary", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("names the running plan with its remaining credit, and is null without one or without a console account", async () => {
+    const fake = installFakeServers();
+    await seedPlan({ name: "Bulanan $20", newapiPlanId: 3 });
+    const endTime = Math.floor(Date.now() / 1000) + 5 * 86_400;
+    fake.subscriptions.set(77, [{ subscription: { id: 5, plan_id: 3, amount_total: 1_000_000, amount_used: 250_000, end_time: endTime, status: "active" } }]);
+
+    expect(await getActiveSubscriptionSummary(77)).toEqual({ planName: "Bulanan $20", remainingQuota: 750_000, endsAt: new Date(endTime * 1000).toISOString() });
+    expect(await getActiveSubscriptionSummary(78)).toBeNull();
+    expect(await getActiveSubscriptionSummary(null)).toBeNull();
+  });
+
+  it("is null when the console cannot be reached", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("offline");
+    });
+    expect(await getActiveSubscriptionSummary(77)).toBeNull();
   });
 });
 
