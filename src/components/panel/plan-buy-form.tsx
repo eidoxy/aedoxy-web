@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatUsd, QUOTA_PER_USD } from "@/lib/format";
 
 /** Buy button for one plan. The replacement checkbox shows when the buyer already has an active plan, or after the server asks for it. */
-export function PlanBuyForm({ planId, planName, hasActive, disabled }: { planId: number; planName: string; hasActive: boolean; disabled?: boolean }) {
+export function PlanBuyForm({ planId, planName, hasActive, disabled, promoCode }: { planId: number; planName: string; hasActive: boolean; disabled?: boolean; promoCode?: string }) {
   const [state, action, pending] = useActionState<BuyPlanState, FormData>(buyPlan, {});
   const needsReplace = hasActive || state.needsReplace !== undefined;
   const checkboxId = `replace-${planId}`;
@@ -16,6 +16,7 @@ export function PlanBuyForm({ planId, planName, hasActive, disabled }: { planId:
   return (
     <form action={action} className="mt-6 space-y-3">
       <input type="hidden" name="planId" value={planId} />
+      {promoCode && <input type="hidden" name="promoCode" value={promoCode} />}
       {needsReplace && (
         <div className="rounded-xl border border-line bg-alt p-3.5">
           <p className="flex items-start gap-2 text-sm text-fg-soft">

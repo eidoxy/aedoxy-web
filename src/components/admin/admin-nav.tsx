@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, Coins, LayoutDashboard, Package, ReceiptText, ScrollText, ShieldCheck } from "lucide-react";
+import { Banknote, Coins, Tag, LayoutDashboard, Package, ReceiptText, ScrollText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ const items = [
   { href: "/admin", label: "Ringkasan", icon: LayoutDashboard },
   { href: "/admin/pool", label: "Pool", icon: Coins },
   { href: "/admin/plans", label: "Paket", icon: Package },
+  { href: "/admin/promos", label: "Promo", icon: Tag },
   { href: "/admin/fx", label: "Kurs", icon: Banknote },
   { href: "/admin/orders", label: "Order", icon: ReceiptText },
   { href: "/admin/audit", label: "Audit", icon: ScrollText },

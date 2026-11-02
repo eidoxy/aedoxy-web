@@ -17,6 +17,7 @@ vi.mock("next/navigation", () => ({
 import { getAdminAccess } from "@/server/admin";
 import { refreshFxAction, saveFxSettingsAction } from "./fx/actions";
 import { retryFulfillmentAction } from "./orders/actions";
+import { createPromoAction, stopPromoAction } from "./promos/actions";
 import { duplicatePlanAction, movePlanAction, savePlanAction, setEnabledAction, setPriceAction } from "./plans/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
 import { GET as exportLedger } from "./pool/export/route";
@@ -31,6 +32,8 @@ const actions = {
   retryFulfillmentAction,
   saveFxSettingsAction,
   refreshFxAction,
+  createPromoAction,
+  stopPromoAction,
 };
 const plain = { duplicatePlanAction, movePlanAction };
 

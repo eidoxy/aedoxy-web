@@ -8,6 +8,17 @@ import { createInvoice } from "@/server/integrations/poketo";
 import * as pool from "./pool";
 import { isPlanSynced, planIsSynced } from "./plan-sellable";
 import { computeOrderAmount, generateTradeNo } from "./pricing";
+import {
+  checkCodeRateLimit,
+  loadPromos,
+  normalizeCode,
+  PromoError,
+  quoteFor,
+  releaseRedemption,
+  reserveRedemption,
+  useRedemption,
+  type PromoErrorCode,
+} from "./promotions";
 
 /**
  * Order state machine (TRD 9.1, 9.2). `settleOrderPaid`, `expireOrder`,
@@ -32,7 +43,8 @@ export type OrderErrorCode =
   | "TOO_MANY_PENDING"
   | "PURCHASE_LIMIT"
   | "OUT_OF_STOCK"
-  | "PAYMENT_UNAVAILABLE";
+  | "PAYMENT_UNAVAILABLE"
+  | PromoErrorCode;
 
 export type ReplaceDetails = { planName: string; remainingQuota: number; endsAt: Date };
 
@@ -61,12 +73,24 @@ function checkRateLimit(userId: string, now = Date.now()) {
   recentCreates.set(userId, recent);
 }
 
-export type CreatePlanOrderInput = { userId: string; planId: number; replaceConfirmed?: boolean };
+export type CreatePlanOrderInput = { userId: string; planId: number; replaceConfirmed?: boolean; /** Optional promo code, any case. */ promoCode?: string };
 export type CreatePlanOrderResult = { orderId: string; tradeNo: string; paymentUrl: string };
 
 export async function createPlanOrder(input: CreatePlanOrderInput): Promise<CreatePlanOrderResult> {
+  try {
+    return await createPlanOrderUnchecked(input);
+  } catch (err) {
+    // Promo rejections reach the buyer as order errors with their own codes and Indonesian messages.
+    if (err instanceof PromoError) throw new OrderError(err.code, err.message);
+    throw err;
+  }
+}
+
+async function createPlanOrderUnchecked(input: CreatePlanOrderInput): Promise<CreatePlanOrderResult> {
   const { userId, planId } = input;
   checkRateLimit(userId);
+  const promoCode = normalizeCode(input.promoCode);
+  if (promoCode !== null) checkCodeRateLimit(userId);
 
   let newapiUserId: number | null;
   try {
@@ -86,7 +110,7 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
   if ((plan.saleStartsAt && plan.saleStartsAt > now) || (plan.saleEndsAt && plan.saleEndsAt <= now)) {
     throw new OrderError("OUT_OF_SALE_PERIOD", "Paket ini sedang tidak dijual.");
   }
-  const price = computeOrderAmount(plan);
+  computeOrderAmount(plan); // rejects a flat price outside the QRIS limits before anything is reserved
 
   // One active plan per user: replacing it needs explicit confirmation (PRD section 11, F03).
   let active;
@@ -126,6 +150,11 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
       }
     }
 
+    // Read under the user lock so the per-user limit cannot be raced; the quota itself is taken at the end.
+    const quote = quoteFor(plan, await loadPromos(tx, userId, promoCode), now);
+    if (quote.codeRejection) throw new PromoError(quote.codeRejection);
+    const { promo, listPriceIdr, discountIdr, amountIdr } = quote.choice;
+
     let inserted;
     for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
       [inserted] = await tx
@@ -144,7 +173,10 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
             newapiPlanId: plan.newapiPlanId,
           },
           creditQuota: plan.creditQuota,
-          ...price,
+          promotionId: promo?.id ?? null,
+          listPriceIdr,
+          discountIdr,
+          amountIdr,
           expiresAt: new Date(now.getTime() + INVOICE_TTL_MINUTES * 60_000),
         })
         .onConflictDoNothing({ target: orders.tradeNo })
@@ -161,6 +193,8 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
     if (stock.length === 0 || !(await pool.reserve(tx, plan.creditQuota, inserted.id))) {
       throw new OrderError("OUT_OF_STOCK", "Stok paket habis.");
     }
+    // Last, so locks are taken in the order plan -> pool -> promotion everywhere (closeOrder, settleOrderPaid).
+    if (promo) await reserveRedemption(tx, promo, plan.id, inserted.id, userId, now);
     return inserted;
   });
 
@@ -217,6 +251,7 @@ export async function settleOrderPaid(orderId: string): Promise<SettleOutcome> {
         throw new Error(`Pool invariant broken: no reservation to sell for order ${order.tradeNo}`);
       }
       await markPaid(tx, order);
+      await useRedemption(tx, order.id);
       return "settled";
     }
 
@@ -226,6 +261,7 @@ export async function settleOrderPaid(orderId: string): Promise<SettleOutcome> {
       await tx.update(plans).set({ soldCount: sql`${plans.soldCount} + 1` }).where(eq(plans.id, order.planId));
       const { available } = await pool.lateSell(tx, order.creditQuota, order.id);
       await markPaid(tx, order);
+      await useRedemption(tx, order.id); // the discount was given, so the redemption counts again
       console.warn("[orders] late payment activated", { tradeNo: order.tradeNo, was: order.status, poolAvailable: available });
       return "late_settled";
     }
@@ -248,6 +284,7 @@ async function closeOrder(orderId: string, status: "expired" | "cancelled" | "fa
     if (!(await pool.release(tx, order.creditQuota, order.id))) {
       throw new Error(`Pool invariant broken: no reservation to release for order ${order.tradeNo}`);
     }
+    await releaseRedemption(tx, order.id);
     return "closed";
   });
 }
