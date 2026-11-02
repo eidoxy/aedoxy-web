@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AuthCard, AuthCardFallback } from "@/components/auth/auth-ui";
 import { LoginForm } from "@/components/auth/login-form";
+import { SignedInGate } from "@/components/auth/signed-in-gate";
 import { env } from "@/env";
 
 export const metadata: Metadata = { title: "Masuk" };
@@ -10,7 +11,9 @@ export const metadata: Metadata = { title: "Masuk" };
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <Suspense fallback={<AuthCardFallback />}>
-      <Login searchParams={searchParams} />
+      <SignedInGate searchParams={searchParams}>
+        <Login searchParams={searchParams} />
+      </SignedInGate>
     </Suspense>
   );
 }
