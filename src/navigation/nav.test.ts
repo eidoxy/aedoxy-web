@@ -50,6 +50,17 @@ describe("menu config", () => {
     expect(navHrefs(adminNavFor(true))).toEqual(navHrefs(adminNav));
   });
 
+  it.each([
+    ["user", userNav],
+    ["admin", adminNav],
+  ])("no %s menu item repeats the label of its group", (_name, groups) => {
+    for (const g of groups) for (const i of g.items) expect(i.title, `${i.title} repeats group ${g.label}`).not.toBe(g.label);
+  });
+
+  it("the billing item reads Paket & pesanan", () => {
+    expect(userNav.flatMap((g) => g.items).some((i) => i.title === "Paket & pesanan")).toBe(true);
+  });
+
   it("user menu keeps the Console API action out of the link list", () => {
     expect(navHrefs(userNav)).not.toContain(undefined);
     expect(userNav.flatMap((g) => g.items).some((i) => i.action === "open-console" && !i.url)).toBe(true);

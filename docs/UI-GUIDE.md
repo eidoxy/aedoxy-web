@@ -93,6 +93,7 @@ Dipakai oleh panel user (`src/app/(panel)`) dan admin (`src/app/(admin)/admin`) 
 - **Grup menu**: konfigurasi bertipe di `src/navigation/user-nav.ts` dan `admin-nav.ts`. Tambah halaman baru dengan menambah item di sana; tes memastikan setiap `href` punya `page.tsx`. Item ber-sub-menu terbuka otomatis bila salah satu anaknya aktif, dan menjadi dropdown saat sidebar diciutkan.
 - **Kartu footer** (hilang saat diciutkan): user melihat paket aktif dan sisa waktu, admin melihat pool tersedia. Di bawahnya `NavUser` (avatar inisial, dropdown akun, keluar).
 - **Konten**: `<main id="main">` di dalam `SidebarInset`, padding `p-4 md:p-6`. Jangan membungkus lagi dengan `container-x`.
+- **Primitif halaman**: `PageHeader` (eyebrow, h1, deskripsi, aksi), `SectionCard`/`InfoRow` (judul di kiri, isi di kanan), `TableCard` (tabel dalam kartu, scroll di dalam kartu) di `src/components/console/`, dan `Card` di `src/components/ui/card.tsx`. Halaman memakai `space-y-6` dan lebar penuh; batasi `max-w` hanya untuk teks panjang.
 - **Gerbang**: seluruh cangkang dirender hanya setelah `requireSession`/`requireAdmin` selesai. `ShellFallback` sengaja netral (tanpa label menu, nama, atau teks per peran).
 - Pasangan teks sidebar lolos kontras AA di terang dan gelap karena memakai token yang sama dengan konten.
 

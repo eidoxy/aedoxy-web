@@ -8,7 +8,7 @@ export const userNav: NavGroup[] = [
     label: "Langganan",
     items: [
       {
-        title: "Langganan",
+        title: "Paket & pesanan",
         icon: CreditCard,
         subItems: [
           { title: "Pilih paket", url: "/plans" },
