@@ -21,12 +21,18 @@ bun run db:generate  # Drizzle migrations from src/server/db/schema.ts (no DB ne
 bun run db:seed-catalog  # example plans + pool row (SEED_POOL_USD=500 sets the opening balance once; an existing pool is never changed)
                           # also syncs unsynced plans to New API: needs the console running + NEWAPI_INTERNAL_URL/NEWAPI_BRIDGE_TOKEN; rerun after a failure
 bun run db:make-admin you@example.com   # gives an existing user the admin role (shell only, no endpoint); they then enrol 2FA at /admin/security
+bun run db:reset-2fa you@example.com    # emergency: removes 2FA, signs the user out everywhere (shell only, no endpoint)
 bun run worker       # outbox, order sweeper, expiry reconciliation, pool invariant (needs DATABASE_URL + New API/Poketo env)
 ```
 
 Before pushing, run `bun run typecheck`, `bun run lint`, `bun run test` and `bun run build`: only the build catches prerender errors (Suspense, cache lifetimes).
 
 Copy `.env.example` to `.env.local`. All integration variables are optional until `ENV_STRICT=true`.
+
+## Pemulihan 2FA admin
+
+1. Masih punya kode cadangan: masuk dengan kata sandi, pakai kode cadangan sebagai kode 2FA, lalu di `/admin/security` buat ulang kode cadangan atau atur ulang 2FA.
+2. Semua hilang: operator server menjalankan `bun run db:reset-2fa <email>`. Perintah ini menghapus rahasia 2FA, mengeluarkan user dari semua sesi, dan mencatat audit (`cli:reset-2fa`). Tidak ada endpoint HTTP untuk ini. Setelah itu admin masuk dengan kata sandi dan diarahkan ke `/admin/security` untuk mendaftar 2FA ulang.
 
 ## Layout
 

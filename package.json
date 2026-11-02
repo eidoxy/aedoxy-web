@@ -14,6 +14,7 @@
     "db:seed-oauth": "bun scripts/seed-oauth-client.ts",
     "db:seed-catalog": "bun scripts/seed-catalog.ts",
     "db:make-admin": "bun scripts/make-admin.ts",
+    "db:reset-2fa": "bun scripts/reset-2fa.ts",
     "worker": "bun src/worker/index.ts"
   },
   "dependencies": {
