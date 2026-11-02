@@ -5,6 +5,7 @@ import { AuthCard, AuthCardFallback } from "@/components/auth/auth-ui";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignedInGate } from "@/components/auth/signed-in-gate";
 import { env } from "@/env";
+import { getSiteSettings } from "@/server/site";
 
 export const metadata: Metadata = { title: "Masuk" };
 
@@ -19,12 +20,12 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 }
 
 async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
-  const { reset } = await searchParams;
+  const [{ reset }, { brandName }] = await Promise.all([searchParams, getSiteSettings()]);
   const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
   return (
     <AuthCard
       title="Masuk"
-      description={reset ? "Kata sandi sudah diganti. Silakan masuk dengan kata sandi baru." : "Masuk ke akun aedoxy Anda."}
+      description={reset ? "Kata sandi sudah diganti. Silakan masuk dengan kata sandi baru." : `Masuk ke akun ${brandName} Anda.`}
       footer={
         <p>
           Belum punya akun?{" "}

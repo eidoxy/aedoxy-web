@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { cacheLife, cacheTag } from "next/cache";
+import type { BrandInfo } from "@/lib/brand";
 import { siteDefaults, loadSiteSettings, type SiteView } from "@/server/domain/site-settings";
 import type { Announcement } from "@/server/catalog/types";
 
@@ -21,6 +22,11 @@ export async function getSiteSettings(): Promise<SiteView> {
     cacheLife({ stale: 30, revalidate: 30, expire: 300 });
     return { ...siteDefaults(), updatedAt: null, assets: {} };
   }
+}
+
+export async function getBrand(): Promise<BrandInfo> {
+  const { brandName, hideWordmark, assets } = await getSiteSettings();
+  return { name: brandName, hideWordmark, logo: assets.logo ? { src: assets.logo.url, width: assets.logo.width, height: assets.logo.height } : null };
 }
 
 /** Brand name for code outside the render tree (emails). Never throws. */

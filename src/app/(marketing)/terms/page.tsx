@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection, Ph } from "@/components/marketing/legal";
+import { getSiteSettings } from "@/server/site";
 
-export const metadata: Metadata = {
-  title: "Syarat Layanan",
-  description: "Syarat penggunaan layanan aedoxy: paket kredit berjangka, pembayaran, fair use, dan batas tanggung jawab.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { brandName } = await getSiteSettings();
+  return {
+    title: "Syarat Layanan",
+    description: `Syarat penggunaan layanan ${brandName}: paket kredit berjangka, pembayaran, fair use, dan batas tanggung jawab.`,
+  };
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const { brandName } = await getSiteSettings();
   return (
     <LegalPage
       title="Syarat Layanan"
-      intro="Dengan mendaftar atau membeli paket di aedoxy, Anda menyetujui syarat berikut. Baca bersama Kebijakan Privasi dan Kebijakan Refund."
+      intro={`Dengan mendaftar atau membeli paket di ${brandName}, Anda menyetujui syarat berikut. Baca bersama Kebijakan Privasi dan Kebijakan Refund.`}
     >
       <LegalSection title="1. Penyelenggara dan layanan">
         <p>
-          aedoxy adalah layanan langganan kredit API. Satu API key dan satu base URL memberi akses ke berbagai model AI lewat console API kami. Layanan
+          {brandName} adalah layanan langganan kredit API. Satu API key dan satu base URL memberi akses ke berbagai model AI lewat console API kami. Layanan
           diselenggarakan oleh <Ph>ISI: nama badan usaha atau penyelenggara</Ph>, beralamat di <Ph>ISI: alamat badan usaha</Ph>. Kontak ada di bagian 10.
         </p>
       </LegalSection>

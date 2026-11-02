@@ -1,5 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
-import { Logo } from "@/components/brand/logo";
+import { SiteLogo } from "@/components/brand/site-logo";
 import { site } from "@/config/site";
 import { HeaderShell } from "./header-shell";
 import { MobileNav } from "./mobile-nav";
@@ -11,7 +11,7 @@ export function SiteHeader() {
   return (
     <HeaderShell>
       <div className="container-x relative grid h-16 grid-cols-[1fr_auto] items-center gap-4 md:h-20 md:grid-cols-[1fr_auto_1fr]">
-        <Logo className="justify-self-start" />
+        <SiteLogo className="justify-self-start" />
         <NavLinks items={site.nav} className="hidden md:block" />
         <div className="flex items-center gap-2.5 justify-self-end">
           <ThemeToggle />

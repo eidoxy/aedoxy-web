@@ -10,12 +10,13 @@ import { RankingsSection } from "@/components/marketing/rankings-section";
 import { StatsStrip } from "@/components/marketing/stats-strip";
 import { StepsSection } from "@/components/marketing/steps-section";
 import { FxFootnote } from "@/components/usd-idr";
-import { site } from "@/config/site";
+import { DEFAULT_SAMPLE_MODEL } from "@/lib/schemas/site";
 import { featuredPlan } from "@/lib/plans";
 import { getActivity, getFxRate, getModels, getPlans, getProviders, getRankings, getStats } from "@/server/catalog";
+import { getSiteSettings } from "@/server/site";
 
 export default async function HomePage() {
-  const [plans, providers, models, stats, fx, activity, rankings] = await Promise.all([
+  const [plans, providers, models, stats, fx, activity, rankings, settings] = await Promise.all([
     getPlans(),
     getProviders(),
     getModels(),
@@ -23,18 +24,19 @@ export default async function HomePage() {
     getFxRate(),
     getActivity(),
     getRankings(),
+    getSiteSettings(),
   ]);
   const featured = featuredPlan(plans);
 
   return (
     <>
-      <Hero plans={plans} models={models} providers={providers} />
+      <Hero plans={plans} models={models} providers={providers} apiBaseUrl={settings.apiBaseUrl} sampleModel={settings.sampleModel} />
       <ActivityTicker initialItems={activity} />
       <StatsStrip stats={stats} models={models} providers={providers} />
-      <PlatformSection models={models} providers={providers} plan={featured} fx={fx} />
-      <RankingsSection rankings={rankings} providers={providers} />
+      <PlatformSection models={models} providers={providers} plan={featured} fx={fx} brandName={settings.brandName} />
+      <RankingsSection rankings={rankings} providers={providers} brandName={settings.brandName} />
       <StepsSection plan={featured} />
-      <IntegrationsSection apiBaseUrl={site.apiBaseUrl} modelId={models[0]?.id ?? "nama-model"} />
+      <IntegrationsSection apiBaseUrl={settings.apiBaseUrl} modelId={settings.sampleModel !== DEFAULT_SAMPLE_MODEL ? settings.sampleModel : (models[0]?.id ?? settings.sampleModel)} brandName={settings.brandName} />
       <BillingSection plan={featured} fx={fx} />
       <section id="paket" className="section-rule">
         <div className="container-x py-20 sm:py-28">

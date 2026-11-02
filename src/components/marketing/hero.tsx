@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { site } from "@/config/site";
 import { formatIdr } from "@/lib/format";
 import { cheapestPlan, periodUnit } from "@/lib/plans";
+import { DEFAULT_SAMPLE_MODEL } from "@/lib/schemas/site";
 import type { Model, Plan, Provider } from "@/server/catalog/types";
 import { CodePanel } from "./code-panel";
 import { SessionCta } from "./session-cta";
@@ -16,10 +17,12 @@ const PAYMENT_NOTES = [
   { icon: Layers, label: "Satu paket aktif per akun" },
 ];
 
-export function Hero({ plans, models, providers }: { plans: Plan[]; models: Model[]; providers: Provider[] }) {
+export function Hero({ plans, models, providers, apiBaseUrl, sampleModel }: { plans: Plan[]; models: Model[]; providers: Provider[]; apiBaseUrl: string; sampleModel: string }) {
   const cheapest = cheapestPlan(plans);
   // First model of up to four different providers, for the example chips.
-  const featured = providers.flatMap((p) => models.find((m) => m.providerId === p.id)?.id ?? []).slice(0, 4);
+  const catalogModels = providers.flatMap((p) => models.find((m) => m.providerId === p.id)?.id ?? []);
+  // A model the admin chose in /admin/settings leads the examples; the built-in placeholder never displaces a real model.
+  const featured = (sampleModel === DEFAULT_SAMPLE_MODEL ? catalogModels : [sampleModel, ...catalogModels.filter((m) => m !== sampleModel)]).slice(0, 4);
   const pills = providers.slice(0, 4);
   const more = providers.length - pills.length;
 
@@ -66,7 +69,7 @@ export function Hero({ plans, models, providers }: { plans: Plan[]; models: Mode
 
       <DitherPanel tone="grain" seed={3} className="flex min-h-[560px] flex-col justify-between gap-6 rounded-[20px] p-4 sm:p-8 lg:min-h-[684px] lg:p-11">
         <div className="my-auto">
-          <CodePanel apiBaseUrl={site.apiBaseUrl} modelIds={featured} />
+          <CodePanel apiBaseUrl={apiBaseUrl} modelIds={featured} fallbackModel={sampleModel} />
         </div>
         <div className="flex flex-wrap gap-2" aria-label="Provider yang tersedia">
           {pills.map((p) => (

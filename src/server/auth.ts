@@ -13,6 +13,7 @@ import { sendEmail } from "@/server/email";
 import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyGate, passkeyPlugin } from "@/server/passkey-policy";
 import { sessionOptions } from "@/server/session-config";
 import { sessionTrust } from "@/server/session-trust-plugin";
+import { getBrandName } from "@/server/site";
 
 const isProd = env.NODE_ENV === "production";
 const baseURL = env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_SITE_URL;
@@ -26,11 +27,13 @@ async function linkConsoleAccount(userId: string) {
   }
 }
 
-/** Fire and forget so response timing does not reveal whether an email is registered. */
-function mail(to: string, subject: string, text: string) {
-  void sendEmail({ to, subject, text }).catch((err: unknown) => {
-    console.error(`[auth] email failed subject="${subject}" reason=${err instanceof Error ? err.message : "unknown"}`);
-  });
+/** Fire and forget so response timing does not reveal whether an email is registered (the brand lookup is part of the background work). */
+function mail(to: string, compose: (brand: string) => { subject: string; text: string }) {
+  void getBrandName()
+    .then((brand) => sendEmail({ to, ...compose(brand) }))
+    .catch((err: unknown) => {
+      console.error(`[auth] email failed reason=${err instanceof Error ? err.message : "unknown"}`);
+    });
 }
 
 export const auth = betterAuth({
@@ -57,7 +60,10 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     minPasswordLength: 10,
     sendResetPassword: async ({ user, url }) => {
-      mail(user.email, "Atur ulang kata sandi Aedoxy", `Buka tautan ini untuk mengatur ulang kata sandi (berlaku 1 jam):\n${url}\n\nAbaikan email ini bila bukan Anda yang meminta.`);
+      mail(user.email, (brand) => ({
+        subject: `Atur ulang kata sandi ${brand}`,
+        text: `Buka tautan ini untuk mengatur ulang kata sandi ${brand} (berlaku 1 jam):\n${url}\n\nAbaikan email ini bila bukan Anda yang meminta.`,
+      }));
     },
   },
 
@@ -65,7 +71,7 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      mail(user.email, "Verifikasi email Aedoxy", `Buka tautan ini untuk memverifikasi email Anda:\n${url}`);
+      mail(user.email, (brand) => ({ subject: `Verifikasi email ${brand}`, text: `Buka tautan ini untuk memverifikasi email Anda di ${brand}:\n${url}` }));
     },
     afterEmailVerification: async (user) => {
       await linkConsoleAccount(user.id);

@@ -1,5 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { fillLegalPlaceholder } from "@/lib/schemas/site";
+import { getSiteSettings } from "@/server/site";
 
 /** Shared frame for /terms, /privacy and /refund. Copy is a draft until the owner replaces every [ISI: ...] and has it reviewed. */
 export function LegalPage({ title, intro, children }: { title: string; intro: string; children: React.ReactNode }) {
@@ -34,7 +36,12 @@ export function LegalSection({ title, children }: { title: string; children: Rea
   );
 }
 
-/** A decision the owner has not made yet. Shown in brackets and highlighted so it cannot be missed. */
-export function Ph({ children }: { children: React.ReactNode }) {
+/**
+ * A decision the owner has not made yet. Shown in brackets and highlighted so it cannot be missed.
+ * The three that /admin/settings can answer (business name, address, contact email) turn into plain text once filled in.
+ */
+export async function Ph({ children }: { children: string }) {
+  const filled = fillLegalPlaceholder(children, await getSiteSettings());
+  if (filled) return <>{filled}</>;
   return <mark className="rounded bg-warn/20 px-1 font-mono text-[0.9em] text-heading">[{children}]</mark>;
 }

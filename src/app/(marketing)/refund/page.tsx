@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection, Ph } from "@/components/marketing/legal";
+import { getSiteSettings } from "@/server/site";
 
-export const metadata: Metadata = {
-  title: "Kebijakan Refund",
-  description: "Ketentuan pengembalian dana paket aedoxy dan cara mengajukannya.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { brandName } = await getSiteSettings();
+  return {
+    title: "Kebijakan Refund",
+    description: `Ketentuan pengembalian dana paket ${brandName} dan cara mengajukannya.`,
+  };
+}
 
 export default function RefundPage() {
   return (

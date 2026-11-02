@@ -10,9 +10,9 @@ import { buildSnippet, SNIPPET_LANGS, type SnippetLang } from "@/lib/snippets";
 import { cn } from "@/lib/utils";
 
 /** Hero card: tabbed code sample (python/node/curl), copy button, example response and model chips. */
-export function CodePanel({ apiBaseUrl, modelIds }: { apiBaseUrl: string; modelIds: string[] }) {
+export function CodePanel({ apiBaseUrl, modelIds, fallbackModel }: { apiBaseUrl: string; modelIds: string[]; fallbackModel: string }) {
   const [lang, setLang] = useState<SnippetLang>("python");
-  const [model, setModel] = useState(modelIds[0] ?? "nama-model");
+  const [model, setModel] = useState(modelIds[0] ?? fallbackModel);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {

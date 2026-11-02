@@ -2,21 +2,29 @@ import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { site } from "@/config/site";
+import { getSiteSettings } from "@/server/site";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
-  title: { default: `${site.name}: ${site.tagline}`, template: `%s | ${site.name}` },
-  description: site.description,
-  openGraph: {
-    type: "website",
-    siteName: site.name,
-    title: `${site.name}: ${site.tagline}`,
-    description: site.description,
-    locale: "id_ID",
-  },
-};
-
+export async function generateMetadata(): Promise<Metadata> {
+  const { brandName, tagline, description, assets } = await getSiteSettings();
+  const title = tagline ? `${brandName}: ${tagline}` : brandName;
+  const { favicon, og } = assets;
+  return {
+    metadataBase: new URL(site.url),
+    title: { default: title, template: `%s | ${brandName}` },
+    description,
+    // The built-in icon lives in /public: a file in app/ would override this setting (file-based metadata wins).
+    icons: { icon: favicon ? [{ url: favicon.url, type: favicon.contentType }] : [{ url: "/icon.svg", type: "image/svg+xml" }] },
+    openGraph: {
+      type: "website",
+      siteName: brandName,
+      title,
+      description,
+      locale: "id_ID",
+      ...(og && { images: [{ url: og.url, width: og.width, height: og.height }] }),
+    },
+  };
+}
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5f6f4" },

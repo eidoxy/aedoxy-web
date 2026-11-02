@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection, Ph } from "@/components/marketing/legal";
+import { getSiteSettings } from "@/server/site";
 
-export const metadata: Metadata = {
-  title: "Kebijakan Privasi",
-  description: "Data yang dikumpulkan aedoxy, tujuannya, pihak yang menerimanya, feed aktivitas pembelian, dan hak Anda.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { brandName } = await getSiteSettings();
+  return {
+    title: "Kebijakan Privasi",
+    description: `Data yang dikumpulkan ${brandName}, tujuannya, pihak yang menerimanya, feed aktivitas pembelian, dan hak Anda.`,
+  };
+}
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { brandName } = await getSiteSettings();
   return (
     <LegalPage
       title="Kebijakan Privasi"
-      intro="Halaman ini menjelaskan data apa yang kami kumpulkan saat Anda memakai aedoxy, untuk apa, dan apa yang bisa Anda lakukan atasnya."
+      intro={`Halaman ini menjelaskan data apa yang kami kumpulkan saat Anda memakai ${brandName}, untuk apa, dan apa yang bisa Anda lakukan atasnya.`}
     >
       <LegalSection title="1. Pengendali data">
         <p>

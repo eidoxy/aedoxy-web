@@ -4,16 +4,18 @@ import { Suspense } from "react";
 import { AuthCard, AuthCardFallback } from "@/components/auth/auth-ui";
 import { RegisterForm } from "@/components/auth/register-form";
 import { SignedInGate } from "@/components/auth/signed-in-gate";
+import { getSiteSettings } from "@/server/site";
 
 export const metadata: Metadata = { title: "Daftar" };
 
-export default function RegisterPage({ searchParams }: PageProps<"/register">) {
+export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+  const { brandName } = await getSiteSettings();
   return (
     <Suspense fallback={<AuthCardFallback />}>
       <SignedInGate searchParams={searchParams}>
         <AuthCard
           title="Daftar"
-          description="Satu akun untuk aedoxy.com dan console API."
+          description={`Satu akun untuk ${brandName} dan console API.`}
           footer={
             <p>
               Sudah punya akun?{" "}

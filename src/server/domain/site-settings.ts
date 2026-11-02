@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { site } from "@/config/site";
 import { assetUrl, type AssetKind, type ImageInfo } from "@/lib/image-check";
-import { mergeSiteSettings, SECTION_FIELDS, type SiteSection, type SiteSettings } from "@/lib/schemas/site";
+import { DEFAULT_SAMPLE_MODEL, mergeSiteSettings, SECTION_FIELDS, type SiteSection, type SiteSettings } from "@/lib/schemas/site";
 import { db } from "@/server/db/client";
 import { siteAssets, siteSettings } from "@/server/db/schema";
 import { writeAudit, type Actor } from "./audit";
@@ -29,7 +29,7 @@ export function siteDefaults(): SiteSettings {
     telegramUrl: "",
     announcement: { enabled: false, text: "", href: "", linkLabel: "" },
     apiBaseUrl: site.apiBaseUrl.replace(/\/+$/, ""),
-    sampleModel: "your-model-id",
+    sampleModel: DEFAULT_SAMPLE_MODEL,
   };
 }
 

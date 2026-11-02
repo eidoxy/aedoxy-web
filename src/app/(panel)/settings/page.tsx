@@ -11,6 +11,7 @@ import { SessionTrustForm } from "@/components/panel/session-trust-form";
 import { getShowActivity } from "@/server/domain/activity";
 import { hasPasswordLogin } from "@/server/domain/session-trust";
 import { requireSession } from "@/server/session";
+import { getSiteSettings } from "@/server/site";
 
 export const metadata: Metadata = { title: "Pengaturan" };
 
@@ -24,13 +25,13 @@ export default function SettingsPage() {
 
 async function Settings() {
   const { user, session } = await requireSession();
-  const [show, passwordLogin] = await Promise.all([getShowActivity(user.id), hasPasswordLogin(user.id)]);
+  const [show, passwordLogin, { brandName }] = await Promise.all([getShowActivity(user.id), hasPasswordLogin(user.id), getSiteSettings()]);
   const trustedAt = (session as { trustedAt?: Date | null }).trustedAt;
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Pengaturan" title="Pengaturan akun" description="Data akun Anda dan preferensi tampilan di feed aktivitas." />
 
-      <SectionCard title="Akun" description="Data yang dipakai untuk masuk ke Aedoxy dan console.">
+      <SectionCard title="Akun" description={`Data yang dipakai untuk masuk ke ${brandName} dan console.`}>
         <dl>
           <InfoRow label="Nama">{user.name}</InfoRow>
           <InfoRow label="Email">

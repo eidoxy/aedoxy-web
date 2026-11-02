@@ -37,7 +37,9 @@ export function PlatformSection({
   providers,
   plan,
   fx,
+  brandName,
 }: {
+  brandName: string;
   models: Model[];
   providers: Provider[];
   plan: Plan | null;
@@ -58,7 +60,7 @@ export function PlatformSection({
             </h2>
           </div>
           <p className="reveal max-w-md text-[17px] leading-[1.65] text-fg-muted lg:justify-self-end">
-            Aedoxy meneruskan request Anda ke provider yang tepat dan memotong kredit dari satu paket aktif. Tidak ada akun
+            {brandName} meneruskan request Anda ke provider yang tepat dan memotong kredit dari satu paket aktif. Tidak ada akun
             atau tagihan terpisah untuk tiap provider.
           </p>
         </div>
@@ -148,9 +150,9 @@ export function PlatformSection({
                 ))}
               </div>
               <ol aria-label="Alur request" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-line p-3 font-mono text-xs text-fg-soft">
-                {["Aplikasi Anda", "HTTPS", "aedoxy", "Provider"].map((step, i, all) => (
+                {["Aplikasi Anda", "HTTPS", brandName, "Provider"].map((step, i, all) => (
                   <li key={step} className="flex items-center gap-2">
-                    <span className={cn("rounded-md border px-2.5 py-1.5", step === "aedoxy" ? "border-primary-ink/40 bg-primary-tint text-primary-ink" : "border-line bg-surface-2")}>
+                    <span className={cn("rounded-md border px-2.5 py-1.5", i === 2 ? "border-primary-ink/40 bg-primary-tint text-primary-ink" : "border-line bg-surface-2")}>
                       {step}
                     </span>
                     {i < all.length - 1 && <span aria-hidden className="text-faint">→</span>}
@@ -160,7 +162,7 @@ export function PlatformSection({
             </div>
             {/* TODO(owner): state prompt-retention facts here once confirmed; only HTTPS is claimed for now. */}
             <CardCopy icon={ShieldCheck} title="Alur request yang sederhana">
-              Request dikirim lewat HTTPS ke gateway aedoxy, lalu diteruskan ke provider model.{" "}
+              Request dikirim lewat HTTPS ke gateway {brandName}, lalu diteruskan ke provider model.{" "}
               <Link href="/privacy" className="text-primary-ink underline underline-offset-2">
                 Baca Kebijakan Privasi
               </Link>

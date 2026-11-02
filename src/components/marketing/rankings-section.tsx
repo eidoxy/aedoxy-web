@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import type { Provider, RankingEntry } from "@/server/catalog/types";
 
 /** Hidden when there is no usage data yet (UI-GUIDE section 7). */
-export function RankingsSection({ rankings, providers }: { rankings: RankingEntry[]; providers: Provider[] }) {
+export function RankingsSection({ rankings, providers, brandName }: { rankings: RankingEntry[]; providers: Provider[]; brandName: string }) {
   if (rankings.length === 0) return null;
   const top = rankings.slice(0, 3);
   const max = Math.max(...top.map((r) => r.weeklyTokens), 1);
@@ -22,7 +22,7 @@ export function RankingsSection({ rankings, providers }: { rankings: RankingEntr
             <br />
             <span className="text-fg-muted">dipakai pekan ini.</span>
           </h2>
-          <p className="mt-5 max-w-sm text-base leading-relaxed text-fg-muted">Diurutkan dari volume token pada console aedoxy.</p>
+          <p className="mt-5 max-w-sm text-base leading-relaxed text-fg-muted">Diurutkan dari volume token pada console {brandName}.</p>
           <Link href="/models" className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary-ink hover:underline">
             Lihat katalog model
             <ArrowUpRight className="size-3.5" aria-hidden />

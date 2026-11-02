@@ -2,6 +2,9 @@ import { z } from "zod";
 
 /** Public site settings (admin > Pengaturan situs). Pure: safe to import from client components. */
 
+/** Shown in code samples until the admin picks a model. */
+export const DEFAULT_SAMPLE_MODEL = "your-model-id";
+
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 function parseUrl(v: string): URL | null {

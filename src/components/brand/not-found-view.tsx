@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DitherPanel } from "@/components/brand/dither-panel";
-import { Logo } from "@/components/brand/logo";
+import { SiteLogo } from "@/components/brand/site-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -11,7 +11,7 @@ const TEXT = "Alamat yang Anda buka tidak ada atau sudah dipindahkan.";
 export function NotFoundPage() {
   return (
     <main id="main" className="flex flex-1 flex-col items-center justify-center px-5 py-12">
-      <Logo className="mb-8" />
+      <SiteLogo className="mb-8" />
       <DitherPanel seed={4} className="flex h-44 w-full max-w-xl items-center justify-center rounded-[20px] border border-line sm:h-60">
         <p aria-hidden className="font-mono text-7xl font-medium tracking-[-0.06em] text-white select-none sm:text-9xl">
           404

@@ -28,10 +28,10 @@ const AGENTS: Agent[] = [
  * TODO(owner): per-agent steps below follow each tool's generic "custom base URL"
  * setting. Confirm exact menu names against the current version of each tool.
  */
-function terminalLines(agent: Agent, apiBaseUrl: string, modelId: string): { kind: "comment" | "cmd" | "kv" | "blank"; text: string; k?: string }[] {
+function terminalLines(agent: Agent, apiBaseUrl: string, modelId: string, brandName: string): { kind: "comment" | "cmd" | "kv" | "blank"; text: string; k?: string }[] {
   if (agent.api === "anthropic") {
     return [
-      { kind: "comment", text: `# arahkan ${agent.name} ke aedoxy` },
+      { kind: "comment", text: `# arahkan ${agent.name} ke ${brandName}` },
       { kind: "cmd", text: `export ANTHROPIC_BASE_URL=${apiBaseUrl}` },
       { kind: "cmd", text: "export ANTHROPIC_AUTH_TOKEN=YOUR_API_KEY" },
       { kind: "cmd", text: "claude" },
@@ -45,10 +45,10 @@ function terminalLines(agent: Agent, apiBaseUrl: string, modelId: string): { kin
   ];
 }
 
-export function IntegrationsSection({ apiBaseUrl, modelId }: { apiBaseUrl: string; modelId: string }) {
+export function IntegrationsSection({ apiBaseUrl, modelId, brandName }: { apiBaseUrl: string; modelId: string; brandName: string }) {
   const [activeId, setActiveId] = useState(AGENTS[0].id);
   const active = AGENTS.find((a) => a.id === activeId) ?? AGENTS[0];
-  const lines = terminalLines(active, apiBaseUrl, modelId);
+  const lines = terminalLines(active, apiBaseUrl, modelId, brandName);
 
   return (
     <section className="section-rule">
@@ -61,7 +61,7 @@ export function IntegrationsSection({ apiBaseUrl, modelId }: { apiBaseUrl: strin
             <span className="text-fg-muted">Ubah dua baris.</span>
           </h2>
           <p className="mt-5 max-w-md text-base leading-relaxed text-fg-muted">
-            Agen coding berbasis CLI atau IDE tetap berjalan seperti biasa. Arahkan base URL dan API key ke aedoxy, lalu
+            Agen coding berbasis CLI atau IDE tetap berjalan seperti biasa. Arahkan base URL dan API key ke {brandName}, lalu
             lanjut bekerja.
           </p>
           <ToggleGroup
