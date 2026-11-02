@@ -12,7 +12,8 @@ import { adminAuditLog } from "@/server/db/schema";
 export type PoolTotals = { total: number; reserved: number; sold: number };
 export type InvariantResult = { ok: boolean; pool: PoolTotals; ledger: PoolTotals };
 
-export async function checkPoolInvariant(): Promise<InvariantResult | null> {
+/** `record: false` is the read-only mode used by the admin pages: no log line, no audit row. */
+export async function checkPoolInvariant(opts: { record?: boolean } = {}): Promise<InvariantResult | null> {
   // One statement = one snapshot, so a concurrent reservation cannot show up in only one of the two sides.
   const { rows } = await db.execute<Record<string, string>>(sql`
     select p.total_quota, p.reserved_quota, p.sold_quota,
@@ -34,7 +35,7 @@ export async function checkPoolInvariant(): Promise<InvariantResult | null> {
   const pool = { total: Number(r.total_quota), reserved: Number(r.reserved_quota), sold: Number(r.sold_quota) };
   const ledger = { total: Number(r.total), reserved: Number(r.reserved), sold: Number(r.sold) };
   const ok = pool.total === ledger.total && pool.reserved === ledger.reserved && pool.sold === ledger.sold;
-  if (!ok) {
+  if (!ok && opts.record !== false) {
     console.error("[pool-invariant] credit_pool does not match pool_ledger", { pool, ledger });
     await db.insert(adminAuditLog).values({
       actorId: "system:worker",
