@@ -5,7 +5,8 @@
  * Run: bun scripts/seed-oauth-client.ts   (Bun loads .env.local itself)
  *
  * Prints only the client id. A newly generated secret is written to
- * .env.local as CONSOLE_OIDC_CLIENT_SECRET and never printed.
+ * .env.local as CONSOLE_OIDC_CLIENT_SECRET and not printed. In production (NODE_ENV=production)
+ * it is printed once to stdout instead; SEED_OAUTH_OUT=<path> or SEED_OAUTH_OUT=- overrides either default.
  */
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,15 +19,23 @@ import { oauthClient } from "@/server/db/schema";
 const ENV_FILE = resolve(process.cwd(), ".env.local");
 const KEY = "CONSOLE_OIDC_CLIENT_SECRET";
 
+// Where the new secret goes. Dev default: .env.local. SEED_OAUTH_OUT=<path> writes there instead,
+// SEED_OAUTH_OUT=- prints it to stdout (the production default: a container has no persistent .env.local).
+const OUT = process.env.SEED_OAUTH_OUT ?? (process.env.NODE_ENV === "production" ? "-" : ENV_FILE);
+
 function storeSecret(secret: string) {
   const line = `${KEY}=${secret}`;
-  const current = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8") : "";
+  if (OUT === "-") {
+    console.log(line);
+    return;
+  }
+  const current = existsSync(OUT) ? readFileSync(OUT, "utf8") : "";
   const pattern = new RegExp(`^${KEY}=.*$`, "m");
   if (pattern.test(current)) {
     // Function replacer: a secret containing "$" must not be read as a replacement pattern.
-    writeFileSync(ENV_FILE, current.replace(pattern, () => line));
+    writeFileSync(OUT, current.replace(pattern, () => line));
   } else {
-    appendFileSync(ENV_FILE, `${current && !current.endsWith("\n") ? "\n" : ""}${line}\n`);
+    appendFileSync(OUT, `${current && !current.endsWith("\n") ? "\n" : ""}${line}\n`);
   }
 }
 
@@ -67,7 +76,7 @@ async function main() {
   });
   storeSecret(secret);
   console.log(`client_id=${clientId} created. redirect_uri=${redirectUri}`);
-  console.log(`Secret written to .env.local as ${KEY} (not printed).`);
+  if (OUT !== "-") console.log(`Secret written to ${OUT} as ${KEY} (not printed).`);
 }
 
 main()
