@@ -32,7 +32,7 @@ sudo docker compose run --rm migrate            # migrasi web
 sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # mencetak CONSOLE_OIDC_CLIENT_SECRET sekali
 ```
 
-Salin rahasia yang tercetak ke `.env` (`CONSOLE_OIDC_CLIENT_SECRET`) dan ke pengaturan OAuth di konsol gateway. Redirect URI: `https://ai.aedoxy.com/oauth/aedoxy`. Lalu:
+Compose menolak nilai kosong untuk semua perintah, jadi `.env` awal berisi `CONSOLE_OIDC_CLIENT_SECRET=pending`. Jangan jalankan `web` sebelum nilai itu diganti. Salin rahasia yang tercetak ke `.env` (`CONSOLE_OIDC_CLIENT_SECRET`) dan ke pengaturan OAuth di konsol gateway. Redirect URI: `https://ai.aedoxy.com/oauth/aedoxy`. Lalu:
 
 ```sh
 sudo docker compose run --rm migrate node scripts/seed-catalog.js     # opsional: SEED_POOL_USD=500 untuk saldo pool awal
