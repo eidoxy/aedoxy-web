@@ -1,12 +1,14 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, MoreHorizontal, Pencil, Power } from "lucide-react";
 import Link from "next/link";
+import { useRef, useState } from "react";
 import { duplicatePlanAction, movePlanAction } from "@/app/(admin)/admin/plans/actions";
 import { EnabledDialog, PriceDialog } from "@/components/admin/plan-dialogs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, dataColumns } from "@/components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
 
 export type PlanTableRow = {
@@ -27,6 +29,40 @@ export type PlanTableRow = {
   first: boolean;
   last: boolean;
 };
+
+/** One menu button per row keeps the action column narrow. Duplicate submits a plain form; enable/disable opens its 2FA dialog. */
+function PlanActions({ plan: p }: { plan: PlanTableRow }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const duplicateForm = useRef<HTMLFormElement>(null);
+  return (
+    <div className="flex justify-end">
+      <form ref={duplicateForm} action={duplicatePlanAction}>
+        <input type="hidden" name="planId" value={p.id} />
+      </form>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Aksi untuk ${p.name}`}>
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/plans/${p.id}`}>
+              <Pencil /> Ubah
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
+            <Power /> {p.enabled ? "Nonaktifkan" : "Aktifkan"}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => duplicateForm.current?.requestSubmit()}>
+            <Copy /> Duplikat
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <EnabledDialog planId={p.id} name={p.name} enabled={p.enabled} open={dialogOpen} onOpenChange={setDialogOpen} />
+    </div>
+  );
+}
 
 const col = dataColumns<PlanTableRow>();
 
@@ -59,16 +95,16 @@ const columns = col.columns([
   col.accessor("name", {
     header: "Paket",
     cell: (c) => (
-      <>
-        <Link href={`/admin/plans/${c.row.original.id}`} className="font-medium text-heading underline-offset-4 hover:underline">
+      <div className="flex w-52 min-w-0 items-center gap-2">
+        <Link href={`/admin/plans/${c.row.original.id}`} title={c.getValue()} className="min-w-0 truncate font-medium text-heading underline-offset-4 hover:underline">
           {c.getValue()}
         </Link>
         {c.row.original.badge && (
-          <Badge variant="secondary" className="ml-2">
+          <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
             {c.row.original.badge}
           </Badge>
         )}
-      </>
+      </div>
     ),
   }),
   col.accessor("period", { header: "Periode", cell: (c) => <span className="text-fg-muted">{c.getValue()}</span> }),
@@ -115,20 +151,7 @@ const columns = col.columns([
     enableSorting: false,
     cell: (c) => {
       const p = c.row.original;
-      return (
-        <div className="flex items-center justify-end gap-1.5">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/admin/plans/${p.id}`}>Ubah</Link>
-          </Button>
-          <EnabledDialog planId={p.id} name={p.name} enabled={p.enabled} />
-          <form action={duplicatePlanAction}>
-            <input type="hidden" name="planId" value={p.id} />
-            <Button type="submit" variant="ghost" size="icon-sm" aria-label={`Duplikat ${p.name}`}>
-              <Copy />
-            </Button>
-          </form>
-        </div>
-      );
+      return <PlanActions plan={p} />;
     },
   }),
 ]);

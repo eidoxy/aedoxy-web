@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { createPromoAction, stopPromoAction } from "@/app/(admin)/admin/promos/actions";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { discountedAmount, isValidPromoValue, type PromoKind } from "@/lib/discount";
 import { formatIdr } from "@/lib/format";
@@ -114,18 +115,38 @@ export function PromoForm({ plans }: { plans: PlanOption[] }) {
   );
 }
 
-/** One row's "Hentikan sekarang": asks for a fresh 2FA code before it submits. */
-export function StopPromoForm({ promoId }: { promoId: number }) {
-  const [state, action, pending] = useActionState<AdminFormState, FormData>(stopPromoAction, {});
+/** One row's "Hentikan": a confirmation dialog that asks for a fresh 2FA code before "Hentikan sekarang" submits. */
+export function StopPromoDialog({ promoId, name }: { promoId: number; name: string }) {
+  const [open, setOpen] = useState(false);
+  const [state, action, pending] = useActionState<AdminFormState, FormData>(async (prev, fd) => {
+    const next = await stopPromoAction(prev, fd);
+    if (next.ok) setOpen(false);
+    return next;
+  }, {});
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
-      <input type="hidden" name="promoId" value={promoId} />
-      <Input name="totp" inputMode="numeric" autoComplete="one-time-code" required placeholder="Kode 2FA" aria-label={`Kode 2FA untuk menghentikan promo ${promoId}`} className="h-8 w-28 bg-background" />
-      <Button type="submit" variant="outline" size="sm" disabled={pending}>
-        {pending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
-        Hentikan sekarang
-      </Button>
-      <FormResult error={state.error} ok={state.ok} />
-    </form>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          Hentikan
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Hentikan {name}?</DialogTitle>
+          <DialogDescription>Promo tidak bisa dipakai lagi oleh order baru. Order yang sudah memegang pemakaian promo ini tetap berjalan sampai lunas atau kedaluwarsa.</DialogDescription>
+        </DialogHeader>
+        <form action={action} className="space-y-4">
+          <input type="hidden" name="promoId" value={promoId} />
+          <TotpField id={`totp-stop-${promoId}`} />
+          <FormResult error={state.error} />
+          <DialogFooter>
+            <Button type="submit" variant="destructive" disabled={pending} className="h-10 px-4 text-sm font-semibold">
+              {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              Hentikan sekarang
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

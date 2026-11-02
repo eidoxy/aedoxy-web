@@ -20,8 +20,8 @@ export type ModelTableRow = {
 const col = dataColumns<ModelTableRow>();
 
 const columns = col.columns([
-  col.accessor("modelName", { header: "Model", cell: (c) => <span className="font-mono text-xs">{c.getValue()}</span> }),
-  col.accessor("provider", { header: "Provider" }),
+  col.accessor("modelName", { header: "Model", cell: (c) => <span title={c.getValue()} className="inline-block max-w-64 truncate align-bottom font-mono text-xs">{c.getValue()}</span> }),
+  col.accessor("provider", { header: "Provider", cell: (c) => <span title={c.getValue()} className="inline-block max-w-40 truncate align-bottom">{c.getValue()}</span> }),
   col.accessor((m) => m.contextIn ?? 0, {
     id: "context",
     header: "Context in / out",
@@ -35,7 +35,7 @@ const columns = col.columns([
       );
     },
   }),
-  col.accessor((m) => m.capabilities.join(", "), { id: "capabilities", header: "Kemampuan", cell: (c) => <span className="text-fg-muted">{c.getValue() || "-"}</span> }),
+  col.accessor((m) => m.capabilities.join(", "), { id: "capabilities", header: "Kemampuan", cell: (c) => <span title={c.getValue()} className="inline-block max-w-56 truncate align-bottom text-fg-muted">{c.getValue() || "-"}</span> }),
   col.accessor((m) => Number(m.officialInputUsdPerM ?? 0), {
     id: "official",
     header: "Resmi in / out",

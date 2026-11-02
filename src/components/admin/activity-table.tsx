@@ -9,8 +9,8 @@ export type ActivityTableRow = { orderId: string; label: string; plan: string; a
 const col = dataColumns<ActivityTableRow>();
 
 const columns = col.columns([
-  col.accessor("label", { header: "Tampil sebagai", cell: (c) => <span className="font-mono text-sm">{c.getValue()}</span> }),
-  col.accessor("plan", { header: "Paket" }),
+  col.accessor("label", { header: "Tampil sebagai", cell: (c) => <span title={c.getValue()} className="inline-block max-w-56 truncate align-bottom font-mono text-sm">{c.getValue()}</span> }),
+  col.accessor("plan", { header: "Paket", cell: (c) => <span title={c.getValue()} className="inline-block max-w-48 truncate align-bottom">{c.getValue()}</span> }),
   col.accessor("at", {
     header: "Waktu",
     sortFn: "text",

@@ -27,8 +27,8 @@ const columns = col.columns([
     ),
   }),
   col.accessor((r) => r.tradeNo ?? "-", { id: "tradeNo", header: "Order", cell: (c) => <span className="font-mono text-xs">{c.getValue()}</span> }),
-  col.accessor((r) => r.actorId ?? "-", { id: "actorId", header: "Oleh", cell: (c) => <span className="inline-block max-w-32 truncate align-bottom font-mono text-xs">{c.getValue()}</span> }),
-  col.accessor((r) => r.note ?? "", { id: "note", header: "Catatan", cell: (c) => <span className="inline-block max-w-64 truncate align-bottom text-fg-muted">{c.getValue()}</span> }),
+  col.accessor((r) => r.actorId ?? "-", { id: "actorId", header: "Oleh", cell: (c) => <span title={c.getValue()} className="inline-block max-w-32 truncate align-bottom font-mono text-xs">{c.getValue()}</span> }),
+  col.accessor((r) => r.note ?? "", { id: "note", header: "Catatan", cell: (c) => <span title={c.getValue()} className="inline-block max-w-64 truncate align-bottom text-fg-muted">{c.getValue()}</span> }),
 ]);
 
 /** The server already filtered and paged these rows (URL filters); headers sort the current page only. */

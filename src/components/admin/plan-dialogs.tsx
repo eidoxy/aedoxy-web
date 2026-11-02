@@ -52,9 +52,9 @@ export function PriceDialog({ planId, name, priceIdr }: { planId: number; name: 
   );
 }
 
-/** Enable / disable. Plans are never deleted. */
-export function EnabledDialog({ planId, name, enabled }: { planId: number; name: string; enabled: boolean }) {
-  const [open, setOpen] = useState(false);
+/** Enable / disable. Plans are never deleted. Opened from the row menu, so the caller owns `open`. */
+export function EnabledDialog({ planId, name, enabled, open, onOpenChange }: { planId: number; name: string; enabled: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const setOpen = onOpenChange;
   const [state, action, pending] = useActionState<AdminFormState, FormData>(async (prev, fd) => {
     const next = await setEnabledAction(prev, fd);
     if (next.ok) setOpen(false);
@@ -64,11 +64,6 @@ export function EnabledDialog({ planId, name, enabled }: { planId: number; name:
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          {verb}
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>

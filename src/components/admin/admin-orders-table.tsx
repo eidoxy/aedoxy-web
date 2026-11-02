@@ -37,8 +37,8 @@ const columns = col.columns([
       </Link>
     ),
   }),
-  col.accessor((o) => o.email ?? "-", { id: "email", header: "Pembeli", cell: (c) => <span className="inline-block max-w-48 truncate align-bottom text-fg-muted">{c.getValue()}</span> }),
-  col.accessor((o) => o.planName ?? "-", { id: "planName", header: "Paket" }),
+  col.accessor((o) => o.email ?? "-", { id: "email", header: "Pembeli", cell: (c) => <span title={c.getValue()} className="inline-block max-w-48 truncate align-bottom text-fg-muted">{c.getValue()}</span> }),
+  col.accessor((o) => o.planName ?? "-", { id: "planName", header: "Paket", cell: (c) => <span title={c.getValue()} className="inline-block max-w-48 truncate align-bottom">{c.getValue()}</span> }),
   col.accessor("amountIdr", { header: "Total", meta: { align: "right" }, cell: (c) => <span className="font-mono">{formatIdr(c.getValue())}</span> }),
   col.accessor("status", {
     header: "Status",
