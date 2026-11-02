@@ -10,7 +10,7 @@ import { ensureConsoleAccountForUser } from "@/server/account";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
-import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyPlugins } from "@/server/passkey-policy";
+import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyGate, passkeyPlugin } from "@/server/passkey-policy";
 import { sessionOptions } from "@/server/session-config";
 import { sessionTrust } from "@/server/session-trust-plugin";
 
@@ -114,7 +114,8 @@ export const auth = betterAuth({
       scopes: ["openid", "profile", "email"],
     }),
     twoFactor({ issuer: "Aedoxy" }),
-    ...passkeyPlugins(baseURL),
+    passkeyPlugin(baseURL),
+    passkeyGate(),
     admin({ defaultRole: "user", adminRoles: ["admin"] }),
     sessionTrust(),
     nextCookies(), // keep last

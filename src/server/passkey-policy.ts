@@ -2,7 +2,7 @@ import { passkey } from "@better-auth/passkey";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { db } from "@/server/db/client";
-import { consumeFreshAuth, hasFreshAuth } from "@/server/domain/fresh-auth";
+import { consumeFreshAuth, grantFreshAuth, hasFreshAuth } from "@/server/domain/fresh-auth";
 import { writeAudit } from "@/server/domain/audit";
 
 /**
@@ -32,10 +32,13 @@ function ipFrom(headers: Headers | undefined): string | null {
   return raw ? raw.slice(0, 64) : null;
 }
 
+/** Sent by the "Gunakan passkey" button next to a 2FA field; see the step-up branch below. */
+export const STEP_UP_HEADER = "x-aedoxy-step-up";
+
 export const PASSKEY_PATHS_CLOSED_OVER_HTTP = ["/passkey/delete-passkey", "/passkey/update-passkey"];
 
 /** Gate for adding a passkey, plus throttling of the sign-in endpoints. */
-const passkeyGate = () =>
+export const passkeyGate = () =>
   ({
     id: "passkey-gate",
     hooks: {
@@ -61,9 +64,10 @@ const passkeyGate = () =>
 
 const userVerificationRequired = () => APIError.from("UNAUTHORIZED", { message: "Passkey harus memakai verifikasi pengguna (biometrik atau PIN).", code: "USER_VERIFICATION_REQUIRED" });
 
-export function passkeyPlugins(baseUrl: string) {
-  return [
-    passkey({
+// Two separate exports (not one array): spreading an array into `plugins` widens the inferred plugin tuple and
+// drops the admin plugin's `role` from the session type.
+export function passkeyPlugin(baseUrl: string) {
+  return passkey({
       rpName: "Aedoxy",
       ...relyingPartyFor(baseUrl),
       authenticatorSelection: { residentKey: "required", userVerification: "required" },
@@ -82,11 +86,22 @@ export function passkeyPlugins(baseUrl: string) {
         },
       },
       authentication: {
-        afterVerification: async ({ verification }) => {
-          if (!verification.authenticationInfo.userVerified) throw userVerificationRequired();
+        afterVerification: async ({ ctx, verification }) => {
+          const info = verification.authenticationInfo;
+          if (!info.userVerified) throw userVerificationRequired();
+          if (ctx.headers?.get(STEP_UP_HEADER) !== "1") return; // normal sign-in
+
+          // Step-up: prove a sensitive action with a passkey, without a new session. The credential must belong to
+          // the user of the CURRENT session. We store the proof on that session and abort before the plugin would
+          // sign anybody in (the status is 200, so the client sees success).
+          const current = await getSessionFromCtx(ctx);
+          if (!current) throw APIError.from("UNAUTHORIZED", { message: "Unauthorized", code: "UNAUTHORIZED" });
+          const owned = await ctx.context.adapter.findOne<{ id: string; userId: string }>({ model: "passkey", where: [{ field: "credentialID", value: info.credentialID }] });
+          if (!owned || owned.userId !== current.user.id) throw forbidden("PASSKEY_NOT_YOURS", "Passkey ini bukan milik akun yang sedang masuk.");
+          await ctx.context.adapter.update({ model: "passkey", where: [{ field: "id", value: owned.id }], update: { counter: info.newCounter } });
+          await grantFreshAuth(current.session.id, "action");
+          throw APIError.from("OK", { message: "Passkey terverifikasi.", code: "STEP_UP_OK" });
         },
       },
-    }),
-    passkeyGate(),
-  ];
+  });
 }

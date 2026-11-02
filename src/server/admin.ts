@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { AdminError, type Actor } from "@/server/domain/audit";
+import { consumeFreshAuth } from "@/server/domain/fresh-auth";
 import { getSession } from "@/server/session";
 
 /**
@@ -103,22 +104,44 @@ export async function verifyFreshCode(
 }
 
 /**
- * Re-authentication for sensitive actions: verifies a fresh TOTP (or backup
- * code) on the server, against the signed-in admin's own 2FA secret. Throws
- * AdminError when it fails; call it BEFORE the change.
+ * A typed code is checked as before (TOTP or backup code, with the attempt limit). With no code, the caller
+ * must have just done a passkey assertion: `consumeProof` spends that single-use proof (see domain/fresh-auth.ts).
+ * A typed code never spends the proof.
  */
-export async function requireFreshTotp(code: string) {
+export async function verifyFreshAuth(
+  deps: { totp: CodeVerifier; backup: CodeVerifier; consumeProof: () => Promise<boolean> },
+  userId: string,
+  rawCode: string,
+  now = Date.now(),
+): Promise<void> {
+  if (rawCode.replace(/\s+/g, "")) return verifyFreshCode(deps, userId, rawCode, now);
+  if (await deps.consumeProof()) return;
+  throw new AdminError("Masukkan kode 2FA atau gunakan passkey.", "TOTP_REQUIRED");
+}
+
+/**
+ * Re-authentication for sensitive actions, on the server, against the signed-in admin's own factors:
+ * a fresh TOTP or backup code (`code`), OR a passkey assertion made from THIS session in the last 5 minutes
+ * (single use). Throws AdminError when neither holds; call it BEFORE the change.
+ */
+export async function requireFreshAuth({ code = "" }: { code?: string } = {}) {
   const session = await requireAdmin();
   const h = await headers();
-  await verifyFreshCode(
+  await verifyFreshAuth(
     {
       totp: async (c) => void (await auth.api.verifyTOTP({ headers: h, body: { code: c } })),
       backup: async (c) => void (await auth.api.verifyBackupCode({ headers: h, body: { code: c, disableSession: true } })),
+      consumeProof: () => consumeFreshAuth(session.session.id, "action"),
     },
     session.user.id,
     code,
   );
   return session;
+}
+
+/** Kept for the existing admin actions: the form's `totp` field, which may be empty after a passkey assertion. */
+export async function requireFreshTotp(code: string) {
+  return requireFreshAuth({ code });
 }
 
 /** Test hook: forget recorded failures. */

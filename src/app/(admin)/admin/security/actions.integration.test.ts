@@ -50,7 +50,7 @@ describe("regenerateBackupCodesAction", () => {
     const { u, codes } = await adminWith2fa();
 
     expect(await regenerateBackupCodesAction({}, form({ password: "wrong-password-1", totp: codes[0] }))).toMatchObject({ error: "Kata sandi salah." });
-    expect(await regenerateBackupCodesAction({}, form({ password: TEST_PASSWORD, totp: "" }))).toMatchObject({ error: "Masukkan kode 2FA." });
+    expect(await regenerateBackupCodesAction({}, form({ password: TEST_PASSWORD, totp: "" }))).toMatchObject({ error: "Masukkan kode 2FA atau gunakan passkey." });
     expect(await regenerateBackupCodesAction({}, form({ password: TEST_PASSWORD, totp: "AAAAA-00000" }))).toMatchObject({ error: "Kode 2FA salah." });
 
     const result = await regenerateBackupCodesAction({}, form({ password: TEST_PASSWORD, totp: codes[0] }));

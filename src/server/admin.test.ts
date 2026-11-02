@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { classifyAdmin, decideAdminRequest, requireAdmin, resetFreshCodeFailures, verifyFreshCode } from "./admin";
+import { classifyAdmin, decideAdminRequest, requireAdmin, resetFreshCodeFailures, verifyFreshAuth, verifyFreshCode } from "./admin";
 
 const session = (user: Record<string, unknown>) => ({ user: { id: "u1", ...user } });
 const fullAdmin = session({ role: "admin", twoFactorEnabled: true });
@@ -75,6 +75,34 @@ describe("decideAdminRequest (proxy)", () => {
   it("lets a full admin through", () => {
     expect(decideAdminRequest(fullAdmin, "/admin")).toEqual({ kind: "next" });
     expect(decideAdminRequest(fullAdmin, "/admin/security")).toEqual({ kind: "next" });
+  });
+});
+
+describe("verifyFreshAuth", () => {
+  beforeEach(resetFreshCodeFailures);
+  const ok = async () => {};
+  const bad = async () => {
+    throw new Error("invalid");
+  };
+
+  it("with no code, spends the passkey proof once; without a proof it asks for a code or a passkey", async () => {
+    let proofs = 1;
+    const consumeProof = async () => proofs-- > 0;
+    await expect(verifyFreshAuth({ totp: bad, backup: bad, consumeProof }, "u1", "  ")).resolves.toBeUndefined();
+    await expect(verifyFreshAuth({ totp: bad, backup: bad, consumeProof }, "u1", "")).rejects.toMatchObject({ code: "TOTP_REQUIRED" });
+  });
+
+  it("a typed code never touches the proof, and a wrong code is not rescued by it", async () => {
+    const consumeProof = vi.fn(async () => true);
+    await verifyFreshAuth({ totp: ok, backup: ok, consumeProof }, "u1", "123456");
+    await expect(verifyFreshAuth({ totp: bad, backup: bad, consumeProof }, "u1", "000000")).rejects.toMatchObject({ code: "TOTP_INVALID" });
+    expect(consumeProof).not.toHaveBeenCalled();
+  });
+
+  it("keeps the 5-attempt limit for typed codes", async () => {
+    const consumeProof = async () => false;
+    for (let i = 0; i < 5; i++) await expect(verifyFreshAuth({ totp: bad, backup: bad, consumeProof }, "u1", "000000", 1000 + i)).rejects.toMatchObject({ code: "TOTP_INVALID" });
+    await expect(verifyFreshAuth({ totp: ok, backup: ok, consumeProof }, "u1", "123456", 1010)).rejects.toMatchObject({ code: "TOTP_RATE_LIMITED" });
   });
 });
 

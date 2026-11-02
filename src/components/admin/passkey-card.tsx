@@ -2,27 +2,18 @@
 
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useState, useSyncExternalStore } from "react";
+import { useActionState, useState } from "react";
 import { confirmPasskeyAddAction, deletePasskeyAction, type SecurityFormState } from "@/app/(admin)/admin/security/actions";
 import { SectionCard } from "@/components/console/section-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { useWebAuthnSupport } from "@/lib/use-webauthn-support";
 import { Field } from "./common";
 import { PasswordField } from "./two-factor-manage";
 import { FormResult, TotpField } from "./totp-field";
 
 export type PasskeyItem = { id: string; label: string; createdAt: string; kind: string };
-
-const noop = () => () => {};
-/** False in a browser without WebAuthn. The server snapshot says true so the first paint matches. */
-function useWebAuthnSupport() {
-  return useSyncExternalStore(
-    noop,
-    () => typeof window.PublicKeyCredential !== "undefined",
-    () => true,
-  );
-}
 
 function ceremonyMessage(err: { code?: string; message?: string }): string {
   switch (err.code) {
