@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { classifyAdmin, requireAdmin, resetFreshCodeFailures, verifyFreshCode } from "./admin";
+import { classifyAdmin, decideAdminRequest, requireAdmin, resetFreshCodeFailures, verifyFreshCode } from "./admin";
 
 const session = (user: Record<string, unknown>) => ({ user: { id: "u1", ...user } });
 const fullAdmin = session({ role: "admin", twoFactorEnabled: true });
@@ -47,6 +47,34 @@ describe("admin guard", () => {
   it("lets a full admin through", async () => {
     current.session = fullAdmin;
     await expect(requireAdmin()).resolves.toMatchObject({ user: { role: "admin" } });
+  });
+});
+
+describe("decideAdminRequest (proxy)", () => {
+  const no2fa = session({ role: "admin", twoFactorEnabled: false });
+
+  it("sends a signed-out visitor to /login", () => {
+    expect(decideAdminRequest(null, "/admin")).toEqual({ kind: "redirect", to: "/login" });
+  });
+
+  it("answers a non-admin with 404 on every admin path, with or without 2FA", () => {
+    for (const s of [session({ role: "user", twoFactorEnabled: true }), session({ role: null })]) {
+      for (const path of ["/admin", "/admin/pool", "/admin/pool/export", "/admin/security"]) {
+        expect(decideAdminRequest(s, path)).toEqual({ kind: "not_found" });
+      }
+    }
+  });
+
+  it("sends an admin without 2FA to /admin/security from any other page, and lets that page through", () => {
+    expect(decideAdminRequest(no2fa, "/admin")).toEqual({ kind: "redirect", to: "/admin/security" });
+    expect(decideAdminRequest(no2fa, "/admin/pool/export")).toEqual({ kind: "redirect", to: "/admin/security" });
+    expect(decideAdminRequest(no2fa, "/admin/securityx")).toEqual({ kind: "redirect", to: "/admin/security" });
+    expect(decideAdminRequest(no2fa, "/admin/security")).toEqual({ kind: "next" });
+  });
+
+  it("lets a full admin through", () => {
+    expect(decideAdminRequest(fullAdmin, "/admin")).toEqual({ kind: "next" });
+    expect(decideAdminRequest(fullAdmin, "/admin/security")).toEqual({ kind: "next" });
   });
 });
 

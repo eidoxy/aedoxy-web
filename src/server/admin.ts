@@ -25,6 +25,22 @@ export function classifyAdmin<S extends SessionLike>(session: S | null): AdminAc
   return session.user.twoFactorEnabled === true ? { kind: "ok", session } : { kind: "needs_2fa", session };
 }
 
+export type AdminRequestDecision = { kind: "next" } | { kind: "redirect"; to: string } | { kind: "not_found" };
+
+/**
+ * Pure decision for the proxy (src/proxy.ts), built on classifyAdmin so the rules live in one place.
+ * Anonymous -> /login. Not an admin -> 404. Admin without 2FA -> /admin/security (unless already there).
+ */
+export function decideAdminRequest(session: SessionLike | null, pathname: string): AdminRequestDecision {
+  const access = classifyAdmin(session);
+  if (access.kind === "anonymous") return { kind: "redirect", to: "/login" };
+  if (access.kind === "forbidden") return { kind: "not_found" };
+  if (access.kind === "needs_2fa" && pathname !== "/admin/security" && !pathname.startsWith("/admin/security/")) {
+    return { kind: "redirect", to: "/admin/security" };
+  }
+  return { kind: "next" };
+}
+
 /** For route handlers, which answer with a status code instead of throwing notFound()/redirect(). */
 export async function getAdminAccess() {
   return classifyAdmin(await getSession());
