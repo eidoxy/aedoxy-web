@@ -11,6 +11,7 @@ import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { sessionOptions } from "@/server/session-config";
+import { sessionTrust } from "@/server/session-trust-plugin";
 
 const isProd = env.NODE_ENV === "production";
 
@@ -109,6 +110,7 @@ export const auth = betterAuth({
     }),
     twoFactor({ issuer: "Aedoxy" }),
     admin({ defaultRole: "user", adminRoles: ["admin"] }),
+    sessionTrust(),
     nextCookies(), // keep last
   ],
 });

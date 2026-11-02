@@ -6,7 +6,9 @@ import { InfoRow, SectionCard } from "@/components/console/section-card";
 import { ActivityPreferenceForm } from "@/components/panel/activity-preference-form";
 import { CopyButton } from "@/components/panel/copy-button";
 import { Badge } from "@/components/ui/badge";
+import { SessionTrustForm } from "@/components/panel/session-trust-form";
 import { getShowActivity } from "@/server/domain/activity";
+import { hasPasswordLogin } from "@/server/domain/session-trust";
 import { requireSession } from "@/server/session";
 
 export const metadata: Metadata = { title: "Pengaturan" };
@@ -20,8 +22,9 @@ export default function SettingsPage() {
 }
 
 async function Settings() {
-  const { user } = await requireSession();
-  const show = await getShowActivity(user.id);
+  const { user, session } = await requireSession();
+  const [show, passwordLogin] = await Promise.all([getShowActivity(user.id), hasPasswordLogin(user.id)]);
+  const trustedAt = (session as { trustedAt?: Date | null }).trustedAt;
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Pengaturan" title="Pengaturan akun" description="Data akun Anda dan preferensi tampilan di feed aktivitas." />
@@ -55,6 +58,10 @@ async function Settings() {
             <CopyButton value={user.id} label="ID akun" />
           </InfoRow>
         </dl>
+      </SectionCard>
+
+      <SectionCard title="Sesi" description="Berapa lama Anda tetap masuk di perangkat ini.">
+        <SessionTrustForm initialTrusted={Boolean(trustedAt)} hasPassword={passwordLogin} expiresAt={session.expiresAt.toISOString()} />
       </SectionCard>
 
       <SectionCard title="Privasi" description="Atur apakah pembelian Anda boleh muncul di feed aktivitas.">

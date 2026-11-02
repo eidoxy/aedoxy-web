@@ -47,6 +47,8 @@ export const session = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text("impersonated_by"),
+    /** Set while "Percayai perangkat ini selama 30 hari" is on for this session (see session-trust plugin). */
+    trustedAt: timestamp("trusted_at"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
