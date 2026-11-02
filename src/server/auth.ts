@@ -10,6 +10,7 @@ import { ensureConsoleAccountForUser } from "@/server/account";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
+import { sessionOptions } from "@/server/session-config";
 
 const isProd = env.NODE_ENV === "production";
 
@@ -80,6 +81,8 @@ export const auth = betterAuth({
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
       : {},
+
+  session: sessionOptions,
 
   advanced: { useSecureCookies: isProd },
 
