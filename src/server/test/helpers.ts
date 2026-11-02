@@ -89,6 +89,8 @@ export function installFakeServers() {
   const fulfilled = new Map<string, { user_subscription_id: number; end_time: number; replaced: { id: number; remaining: number }[] }>();
   const state = {
     failCreate: false,
+    /** Cancel-invoice calls answer HTTP 500. */
+    failCancel: false,
     calls: [] as string[],
     /** Number of upcoming fulfill calls that answer HTTP 500. */
     failFulfill: 0,
@@ -122,6 +124,16 @@ export function installFakeServers() {
         };
         invoices.set(body.referenceId, invoice);
         return json({ data: invoice }, 201);
+      }
+      const cancel = path.match(/^\/invoices\/([^/]+)\/cancel$/);
+      if (method === "POST" && cancel) {
+        if (state.failCancel) return json({ error: { code: "internal_error", message: "x" } }, 500);
+        const ref = decodeURIComponent(cancel[1]);
+        const found = invoices.get(ref) ?? [...invoices.values()].find((i) => i.id === ref);
+        if (!found) return json({ error: { code: "not_found", message: "x" } }, 404);
+        if (found.status === "paid") return json({ error: { code: "invoice_not_cancellable", message: "x" } }, 409);
+        found.status = "cancelled";
+        return json({ data: found });
       }
       const match = path.match(/^\/invoices\/([^/]+)$/);
       if (method === "GET" && match) {

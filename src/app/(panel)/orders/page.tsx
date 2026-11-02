@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/console/page-header";
 import { TableCard } from "@/components/console/table-card";
+import { CancelOrderButton } from "@/components/panel/cancel-order-button";
 import { OrderBadge } from "@/components/panel/order-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,9 +65,12 @@ async function Orders() {
                     <OrderBadge status={o.status} fulfillment={o.fulfillment} grantPhase={o.grantPhase} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/orders/${o.id}`} className="text-sm font-medium text-primary-ink underline-offset-4 hover:underline">
-                      Detail
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      {o.status === "pending" && <CancelOrderButton orderId={o.id} size="sm" />}
+                      <Link href={`/orders/${o.id}`} className="text-sm font-medium text-primary-ink underline-offset-4 hover:underline">
+                        Detail
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

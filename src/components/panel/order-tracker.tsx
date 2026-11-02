@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { PageHeader } from "@/components/console/page-header";
 import { InfoRow } from "@/components/console/section-card";
+import { CancelOrderButton } from "@/components/panel/cancel-order-button";
 import { OrderBadge } from "@/components/panel/order-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
     // Light polling that stops by itself once the order reached a final state.
     refetchInterval: (query) => (query.state.data && describeOrder(query.state.data).final ? false : POLL_MS),
   });
+  const queryClient = useQueryClient();
   const now = useNowMs();
 
   const view = describeOrder(data);
@@ -70,6 +72,9 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
               <Button asChild className="h-10 px-4 text-sm font-semibold">
                 <Link href="/dashboard">Ke dashboard</Link>
               </Button>
+            )}
+            {data.status === "pending" && (
+              <CancelOrderButton orderId={order.id} onDone={() => void queryClient.invalidateQueries({ queryKey: ["order-status", order.id] })} />
             )}
             {view.final && data.status !== "paid" && (
               <Button asChild className="h-10 px-4 text-sm font-semibold">
