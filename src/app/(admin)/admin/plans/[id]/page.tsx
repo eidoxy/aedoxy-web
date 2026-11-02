@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Stat } from "@/components/admin/common";
 import { PlanForm } from "@/components/admin/plan-form";
 import { PageHeader } from "@/components/console/page-header";
+import { FormPageSkeleton } from "@/components/console/skeletons";
 import { formatIdr } from "@/lib/format";
 import { planToFormValues } from "@/lib/schemas/plan";
 import { requireAdmin } from "@/server/admin";
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Ubah paket" };
 
 export default function EditPlanPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<FormPageSkeleton fields={6} />}>
       <EditPlan params={params} />
     </Suspense>
   );

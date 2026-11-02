@@ -4,12 +4,13 @@ import { Suspense } from "react";
 import { OrderTracker } from "@/components/panel/order-tracker";
 import { getOrderForUser, planNameOf } from "@/server/domain/order-view";
 import { requireSession } from "@/server/session";
+import { CardsPageSkeleton } from "@/components/console/skeletons";
 
 export const metadata: Metadata = { title: "Detail pesanan" };
 
 export default function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-72 max-w-2xl rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<CardsPageSkeleton cards={1} narrow />}>
       <Order params={params} />
     </Suspense>
   );

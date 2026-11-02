@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { adminDate, Card, Stat } from "@/components/admin/common";
 import { PageHeader } from "@/components/console/page-header";
+import { FormPageSkeleton } from "@/components/console/skeletons";
 import { FxSettingsForm, RefreshFxButton } from "@/components/admin/fx-forms";
 import { Sparkline } from "@/components/admin/sparkline";
 import { formatIdr } from "@/lib/format";
@@ -12,7 +13,7 @@ export const metadata: Metadata = { title: "Kurs" };
 
 export default function FxPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<FormPageSkeleton />}>
       <Fx />
     </Suspense>
   );

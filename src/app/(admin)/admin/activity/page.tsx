@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ActivitySettingsForm } from "@/components/admin/activity-forms";
 import { ActivityTable } from "@/components/admin/activity-table";
 import { PageHeader } from "@/components/console/page-header";
+import { TablePageSkeleton } from "@/components/console/skeletons";
 import { requireAdmin } from "@/server/admin";
 import { db } from "@/server/db/client";
 import { plans } from "@/server/db/schema";
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Aktivitas" };
 
 export default function ActivityAdminPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<TablePageSkeleton filters rows={5} cols={4} />}>
       <Activity />
     </Suspense>
   );

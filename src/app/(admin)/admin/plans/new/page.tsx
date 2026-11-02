@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PlanForm } from "@/components/admin/plan-form";
 import { PageHeader } from "@/components/console/page-header";
+import { FormPageSkeleton } from "@/components/console/skeletons";
 import { requireAdmin } from "@/server/admin";
 
 export const metadata: Metadata = { title: "Buat paket" };
 
 export default function NewPlanPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<FormPageSkeleton fields={6} />}>
       <NewPlan />
     </Suspense>
   );

@@ -4,6 +4,7 @@ import { LedgerTable } from "@/components/admin/ledger-table";
 import { Card, Field, NativeSelect, PAGE_SIZE, Pagination, pageParam, param, Stat, type SearchParams } from "@/components/admin/common";
 import { AdjustPoolForm, ThresholdForm } from "@/components/admin/pool-forms";
 import { PageHeader } from "@/components/console/page-header";
+import { TablePageSkeleton } from "@/components/console/skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UsdIdr } from "@/components/usd-idr";
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: "Pool" };
 
 export default function PoolPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<TablePageSkeleton stats={6} filters cols={6} />}>
       <Pool searchParams={searchParams} />
     </Suspense>
   );

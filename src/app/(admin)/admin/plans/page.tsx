@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PlansTable, type PlanTableRow } from "@/components/admin/plans-table";
 import { PageHeader } from "@/components/console/page-header";
+import { TablePageSkeleton } from "@/components/console/skeletons";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/server/admin";
 import { listAdminPlans } from "@/server/domain/admin-plans";
@@ -11,7 +12,7 @@ export const metadata: Metadata = { title: "Paket" };
 
 export default function AdminPlansPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<TablePageSkeleton cols={11} />}>
       <Plans />
     </Suspense>
   );

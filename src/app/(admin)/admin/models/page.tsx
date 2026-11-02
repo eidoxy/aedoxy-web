@@ -5,6 +5,7 @@ import { param, type SearchParams } from "@/components/admin/common";
 import { ModelMetaForm } from "@/components/admin/model-meta-form";
 import { ModelsTable } from "@/components/admin/models-table";
 import { PageHeader } from "@/components/console/page-header";
+import { TablePageSkeleton } from "@/components/console/skeletons";
 import { requireAdmin } from "@/server/admin";
 import { getCatalog } from "@/server/catalog";
 import { listModelMeta } from "@/server/domain/admin-models";
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Model" };
 
 export default function ModelsAdminPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<TablePageSkeleton filters cols={7} />}>
       <ModelsAdmin searchParams={searchParams} />
     </Suspense>
   );

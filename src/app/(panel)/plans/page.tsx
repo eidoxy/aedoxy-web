@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { param, type SearchParams } from "@/components/admin/common";
 import { PageHeader } from "@/components/console/page-header";
+import { CardsPageSkeleton } from "@/components/console/skeletons";
 import { ActivityCard } from "@/components/panel/activity-card";
 import { PlanBuyForm } from "@/components/panel/plan-buy-form";
 import { PlanGrid } from "@/components/panel/plan-grid";
@@ -25,7 +26,7 @@ export const metadata: Metadata = { title: "Paket" };
 
 export default function PlansPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<CardsPageSkeleton />}>
       <Plans searchParams={searchParams} />
     </Suspense>
   );

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Stat } from "@/components/admin/common";
 import { PageHeader } from "@/components/console/page-header";
+import { StatsPageSkeleton } from "@/components/console/skeletons";
 import { formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { requireAdmin } from "@/server/admin";
 import { getAdminOverview } from "@/server/domain/admin-overview";
@@ -11,7 +12,7 @@ export const metadata: Metadata = { title: "Ringkasan" };
 
 export default function AdminHomePage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-72 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<StatsPageSkeleton stats={6} />}>
       <Overview />
     </Suspense>
   );

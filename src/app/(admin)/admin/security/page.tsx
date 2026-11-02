@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/console/page-header";
+import { FormPageSkeleton } from "@/components/console/skeletons";
 import { SectionCard } from "@/components/console/section-card";
 import { TwoFactorSetup } from "@/components/admin/two-factor-setup";
 import { requireAdmin } from "@/server/admin";
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: "Keamanan" };
 
 export default function SecurityPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-72 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<FormPageSkeleton />}>
       <Security />
     </Suspense>
   );

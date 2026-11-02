@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/console/page-header";
+import { FormPageSkeleton } from "@/components/console/skeletons";
 import { InfoRow, SectionCard } from "@/components/console/section-card";
 import { ActivityPreferenceForm } from "@/components/panel/activity-preference-form";
 import { CopyButton } from "@/components/panel/copy-button";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Pengaturan" };
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-72 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<FormPageSkeleton />}>
       <Settings />
     </Suspense>
   );

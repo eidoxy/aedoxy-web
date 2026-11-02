@@ -1,13 +1,13 @@
 import Link from "next/link";
+import { CardSkeleton } from "@/components/console/skeletons";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatRemaining, formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { getActivePlanForUser, getPoolAvailable } from "@/server/domain/user-plan";
 
 const card = "rounded-xl border border-line bg-surface p-3 text-sm";
 
 export function SidebarCardSkeleton() {
-  return <Skeleton aria-hidden className="h-20 rounded-xl bg-line" />;
+  return <CardSkeleton lines={1} className="space-y-2 rounded-xl p-3" />;
 }
 
 // Both cards are a convenience: when the query fails the sidebar shows none instead of breaking the page.

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PromoForm } from "@/components/admin/promo-forms";
 import { PromosTable, type PromoTableRow } from "@/components/admin/promos-table";
 import { PageHeader } from "@/components/console/page-header";
+import { TablePageSkeleton } from "@/components/console/skeletons";
 import { requireAdmin } from "@/server/admin";
 import { db } from "@/server/db/client";
 import { plans } from "@/server/db/schema";
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Promo" };
 
 export default function PromosPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<TablePageSkeleton cols={8} />}>
       <Promos />
     </Suspense>
   );

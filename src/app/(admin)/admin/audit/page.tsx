@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AuditTable } from "@/components/admin/audit-table";
 import { Card, Field, PAGE_SIZE, Pagination, pageParam, param, type SearchParams } from "@/components/admin/common";
 import { PageHeader } from "@/components/console/page-header";
+import { TablePageSkeleton } from "@/components/console/skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requireAdmin } from "@/server/admin";
@@ -12,7 +13,7 @@ export const metadata: Metadata = { title: "Audit" };
 
 export default function AuditPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<TablePageSkeleton filters cols={7} />}>
       <Audit searchParams={searchParams} />
     </Suspense>
   );

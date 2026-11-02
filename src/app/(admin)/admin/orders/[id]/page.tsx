@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { adminDate, Card } from "@/components/admin/common";
 import { PageHeader } from "@/components/console/page-header";
+import { CardsPageSkeleton } from "@/components/console/skeletons";
 import { RetryFulfillmentForm } from "@/components/admin/retry-fulfillment-form";
 import { OrderBadge } from "@/components/panel/order-badge";
 import { formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Detail order" };
 
 export default function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<div aria-hidden className="h-96 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<CardsPageSkeleton cards={2} />}>
       <OrderDetail params={params} />
     </Suspense>
   );

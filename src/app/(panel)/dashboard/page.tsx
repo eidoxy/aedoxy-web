@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DitherPanel } from "@/components/brand/dither-panel";
 import { PageHeader } from "@/components/console/page-header";
+import { StatsPageSkeleton } from "@/components/console/skeletons";
 import { CopyButton } from "@/components/panel/copy-button";
 import { OpenConsoleButton } from "@/components/panel/open-console-button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div aria-hidden className="h-72 rounded-[18px] border border-line bg-surface" />}>
+    <Suspense fallback={<StatsPageSkeleton stats={0} cards={3} />}>
       <Dashboard />
     </Suspense>
   );
