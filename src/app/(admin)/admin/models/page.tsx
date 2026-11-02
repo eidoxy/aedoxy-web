@@ -3,11 +3,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { param, type SearchParams } from "@/components/admin/common";
 import { ModelMetaForm } from "@/components/admin/model-meta-form";
+import { ModelsTable } from "@/components/admin/models-table";
 import { PageHeader } from "@/components/console/page-header";
-import { TableCard } from "@/components/console/table-card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatTokens } from "@/lib/format";
 import { requireAdmin } from "@/server/admin";
 import { getCatalog } from "@/server/catalog";
 import { listModelMeta } from "@/server/domain/admin-models";
@@ -66,49 +63,7 @@ async function ModelsAdmin({ searchParams }: { searchParams: SearchParams }) {
       )}
 
       <h2 className="pt-4 text-xl font-medium tracking-[-0.02em] text-heading">Metadata tersimpan</h2>
-      <TableCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Model</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Context in / out</TableHead>
-              <TableHead>Kemampuan</TableHead>
-              <TableHead>Resmi in / out</TableHead>
-              <TableHead>Tampil</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {metas.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-fg-muted">
-                  Belum ada metadata.
-                </TableCell>
-              </TableRow>
-            )}
-            {metas.map((m) => (
-              <TableRow key={m.id}>
-                <TableCell className="font-mono text-xs">{m.modelName}</TableCell>
-                <TableCell>{m.provider}</TableCell>
-                <TableCell className="font-mono text-xs">
-                  {m.contextIn === null ? "-" : formatTokens(m.contextIn)} / {m.contextOut === null ? "-" : formatTokens(m.contextOut)}
-                </TableCell>
-                <TableCell className="text-fg-muted">{m.capabilities.join(", ") || "-"}</TableCell>
-                <TableCell className="font-mono text-xs">
-                  {m.officialInputUsdPerM === null ? "-" : `$${Number(m.officialInputUsdPerM)}`} / {m.officialOutputUsdPerM === null ? "-" : `$${Number(m.officialOutputUsdPerM)}`}
-                </TableCell>
-                <TableCell>{m.visible ? <Badge variant="secondary">Ya</Badge> : <Badge variant="outline">Disembunyikan</Badge>}</TableCell>
-                <TableCell className="text-right">
-                  <Link href={`/admin/models?edit=${encodeURIComponent(m.modelName)}`} className="text-sm text-primary-ink underline-offset-4 hover:underline">
-                    Ubah
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableCard>
+      <ModelsTable rows={metas} />
     </div>
   );
 }

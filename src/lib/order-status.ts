@@ -52,6 +52,17 @@ export function describeOrder(order: { status: OrderStatus; fulfillment: Fulfill
   }
 }
 
+/** One row of GET /api/orders (the buyer's order history). */
+export type OrderListItem = {
+  id: string;
+  createdAt: string;
+  planName: string;
+  amountIdr: number;
+  statusLabel: string;
+  tone: OrderTone;
+  pending: boolean;
+};
+
 /** Seconds left until `expiresAt`, never negative. */
 export function secondsLeft(expiresAt: Date | string, nowMs: number): number {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - nowMs) / 1000));

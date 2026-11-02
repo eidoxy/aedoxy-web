@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { adminDate, Card, Field, NativeSelect, PAGE_SIZE, Pagination, pageParam, param, Stat, type SearchParams } from "@/components/admin/common";
+import { LedgerTable } from "@/components/admin/ledger-table";
+import { Card, Field, NativeSelect, PAGE_SIZE, Pagination, pageParam, param, Stat, type SearchParams } from "@/components/admin/common";
 import { AdjustPoolForm, ThresholdForm } from "@/components/admin/pool-forms";
 import { PageHeader } from "@/components/console/page-header";
-import { TableCard } from "@/components/console/table-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UsdIdr } from "@/components/usd-idr";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { requireAdmin } from "@/server/admin";
 import { getFxRate } from "@/server/catalog";
@@ -103,42 +102,7 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
         </div>
       </form>
 
-      <TableCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Waktu</TableHead>
-              <TableHead>Tipe</TableHead>
-              <TableHead className="text-right">Perubahan</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Oleh</TableHead>
-              <TableHead>Catatan</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ledger.rows.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-fg-muted">
-                  Tidak ada baris.
-                </TableCell>
-              </TableRow>
-            )}
-            {ledger.rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="whitespace-nowrap text-fg-muted">{adminDate.format(r.createdAt)}</TableCell>
-                <TableCell className="font-mono text-xs">{r.type}</TableCell>
-                <TableCell className="text-right font-mono">
-                  {r.delta > 0 ? "+" : ""}
-                  {usd(r.delta)}
-                </TableCell>
-                <TableCell className="font-mono text-xs">{r.tradeNo ?? "-"}</TableCell>
-                <TableCell className="max-w-32 truncate font-mono text-xs">{r.actorId ?? "-"}</TableCell>
-                <TableCell className="max-w-64 truncate text-fg-muted">{r.note ?? ""}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableCard>
+      <LedgerTable rows={ledger.rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))} />
       <Pagination basePath="/admin/pool" params={filter} page={page} total={ledger.total} />
     </div>
   );

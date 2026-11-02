@@ -1,11 +1,9 @@
 import { asc } from "drizzle-orm";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ActivitySettingsForm, HideItemForm } from "@/components/admin/activity-forms";
-import { adminDate } from "@/components/admin/common";
+import { ActivitySettingsForm } from "@/components/admin/activity-forms";
+import { ActivityTable } from "@/components/admin/activity-table";
 import { PageHeader } from "@/components/console/page-header";
-import { TableCard } from "@/components/console/table-card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/server/admin";
 import { db } from "@/server/db/client";
 import { plans } from "@/server/db/schema";
@@ -46,37 +44,7 @@ async function Activity() {
           <p className="mt-2 text-sm text-warn">Item kurang dari 3, feed tidak tampil di situs.</p>
         ) : null}
       </div>
-      <TableCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tampil sebagai</TableHead>
-              <TableHead>Paket</TableHead>
-              <TableHead>Waktu</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-fg-muted">
-                  Belum ada item.
-                </TableCell>
-              </TableRow>
-            )}
-            {items.map((i) => (
-              <TableRow key={i.orderId}>
-                <TableCell className="font-mono text-sm">{i.label}</TableCell>
-                <TableCell>{i.plan}</TableCell>
-                <TableCell className="whitespace-nowrap text-fg-muted">{adminDate.format(new Date(i.at))}</TableCell>
-                <TableCell>
-                  <HideItemForm orderId={i.orderId} label={i.label} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableCard>
+      <ActivityTable rows={items} />
       <p className="text-xs text-faint">{settings.hiddenOrderIds.length} item disembunyikan. Perubahan tampil di situs dalam sekitar 30 detik.</p>
     </div>
   );
