@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { parsePromoForm } from "@/lib/schemas/promo";
 import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
@@ -24,7 +25,7 @@ export async function createPromoAction(_prev: AdminFormState, formData: FormDat
     return toActionError(err);
   }
   refresh();
-  return { ok: "Promo dibuat." };
+  redirect("/admin/promos?dibuat=1");
 }
 
 const stopInput = z.object({ promoId: z.coerce.number().int().positive(), totp: z.string().default("") });
