@@ -22,6 +22,8 @@ bun run db:make-admin you@example.com   # gives an existing user the admin role 
 bun run worker       # outbox, order sweeper, expiry reconciliation, pool invariant (needs DATABASE_URL + New API/Poketo env)
 ```
 
+Before pushing, run `bun run typecheck`, `bun run lint`, `bun run test` and `bun run build`: only the build catches prerender errors (Suspense, cache lifetimes).
+
 Copy `.env.example` to `.env.local`. All integration variables are optional until `ENV_STRICT=true`.
 
 ## Layout
