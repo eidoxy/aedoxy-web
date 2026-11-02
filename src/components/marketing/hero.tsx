@@ -8,6 +8,7 @@ import { formatIdr } from "@/lib/format";
 import { cheapestPlan, periodUnit } from "@/lib/plans";
 import type { Model, Plan, Provider } from "@/server/catalog/types";
 import { CodePanel } from "./code-panel";
+import { SessionCta } from "./session-cta";
 
 const PAYMENT_NOTES = [
   { icon: QrCode, label: "QRIS" },
@@ -43,12 +44,12 @@ export function Hero({ plans, models, providers }: { plans: Plan[]; models: Mode
           flat dalam rupiah, bayar dengan QRIS atau Virtual Account.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild className="h-[52px] px-6 text-base font-semibold">
-            <Link href={site.links.register}>
-              Dapatkan API key
-              <ArrowUpRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
+          <SessionCta
+            label="Dapatkan API key"
+            href={site.links.register}
+            icon={<ArrowUpRight className="size-4" aria-hidden />}
+            className="h-[52px] min-w-[12.5rem] justify-center px-6 text-base font-semibold"
+          />
           <Button asChild variant="outline" className="h-[52px] bg-surface px-6 text-base font-semibold">
             <Link href="/models">Lihat model</Link>
           </Button>

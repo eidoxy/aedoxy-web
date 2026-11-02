@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DitherPanel } from "@/components/brand/dither-panel";
 import { Button } from "@/components/ui/button";
 import { site } from "@/config/site";
+import { SessionCta } from "./session-cta";
 
 export function CtaSection() {
   return (
@@ -22,12 +23,12 @@ export function CtaSection() {
             Pilih paket, bayar dengan QRIS, lalu buat API key di console.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild className="h-[52px] px-6 text-base font-semibold">
-              <Link href={site.links.register}>
-                Dapatkan API key
-                <ArrowUpRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
+            <SessionCta
+              label="Dapatkan API key"
+              href={site.links.register}
+              icon={<ArrowUpRight className="size-4" aria-hidden />}
+              className="h-[52px] min-w-[12.5rem] justify-center px-6 text-base font-semibold"
+            />
             <Button asChild variant="outline" className="h-[52px] bg-surface px-6 text-base font-semibold">
               <Link href="/pricing">Lihat paket</Link>
             </Button>

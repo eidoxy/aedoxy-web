@@ -1,11 +1,10 @@
 import { ArrowUpRight } from "lucide-react";
-import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
 import { site } from "@/config/site";
 import { HeaderShell } from "./header-shell";
 import { MobileNav } from "./mobile-nav";
 import { NavLinks } from "./nav-links";
+import { SessionCta } from "./session-cta";
 import { ThemeToggle } from "./theme-toggle";
 
 export function SiteHeader() {
@@ -16,12 +15,12 @@ export function SiteHeader() {
         <NavLinks items={site.nav} className="hidden md:block" />
         <div className="flex items-center gap-2.5 justify-self-end">
           <ThemeToggle />
-          <Button asChild className="hidden h-10 px-4 text-sm font-semibold md:inline-flex">
-            <Link href={site.links.register}>
-              Mulai
-              <ArrowUpRight className="size-3.5" aria-hidden />
-            </Link>
-          </Button>
+          <SessionCta
+            label="Mulai"
+            href={site.links.register}
+            icon={<ArrowUpRight className="size-3.5" aria-hidden />}
+            className="hidden h-10 min-w-[8.5rem] justify-center px-4 text-sm font-semibold md:inline-flex"
+          />
           <MobileNav items={site.nav} ctaHref={site.links.register} />
         </div>
       </div>

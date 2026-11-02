@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { NavItem } from "./nav-links";
+import { SessionCta } from "./session-cta";
 
 export function MobileNav({ items, ctaHref }: { items: readonly NavItem[]; ctaHref: string }) {
   const pathname = usePathname();
@@ -45,9 +46,7 @@ export function MobileNav({ items, ctaHref }: { items: readonly NavItem[]; ctaHr
               </li>
             ))}
           </ul>
-          <Button asChild className="mt-4 h-11 w-full text-sm font-semibold">
-            <Link href={ctaHref}>Mulai</Link>
-          </Button>
+          <SessionCta label="Mulai" href={ctaHref} className="mt-4 h-11 w-full text-sm font-semibold" />
         </nav>
       )}
     </div>
