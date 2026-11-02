@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { useWebAuthnSupport } from "@/lib/use-webauthn-support";
 import { Field } from "./common";
+import { useHasPasskey } from "./passkey-context";
 
 // Must match STEP_UP_HEADER in src/server/passkey-policy.ts (that file is server-only).
 const STEP_UP_HEADER = "x-aedoxy-step-up";
@@ -17,7 +18,9 @@ const STEP_UP_HEADER = "x-aedoxy-step-up";
  * 5 minutes). After a passkey assertion the field may stay empty.
  */
 export function TotpField({ id = "totp", error }: { id?: string; error?: string }) {
-  const supported = useWebAuthnSupport();
+  const webauthn = useWebAuthnSupport();
+  const hasPasskey = useHasPasskey();
+  const supported = webauthn && hasPasskey;
   const inputRef = useRef<HTMLInputElement>(null);
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);

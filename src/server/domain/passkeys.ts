@@ -12,3 +12,8 @@ export async function listPasskeys(userId: string): Promise<PasskeySummary[]> {
     .where(eq(passkey.userId, userId))
     .orderBy(desc(passkey.createdAt));
 }
+
+export async function hasPasskey(userId: string): Promise<boolean> {
+  const [row] = await db.select({ id: passkey.id }).from(passkey).where(eq(passkey.userId, userId)).limit(1);
+  return !!row;
+}

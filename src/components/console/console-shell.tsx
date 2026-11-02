@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import type { ConsoleVariant } from "@/navigation";
 import { requireAdmin } from "@/server/admin";
+import { hasPasskey } from "@/server/domain/passkeys";
 import { requireSession } from "@/server/session";
+import { HasPasskeyProvider } from "@/components/admin/passkey-context";
 import { AppSidebar } from "./app-sidebar";
 import { ConsoleHeader } from "./console-header";
 import { AdminPoolCard, SidebarCardSkeleton, UserPlanCard } from "./sidebar-cards";
@@ -20,6 +22,8 @@ export async function ConsoleShell({ variant, children }: { variant: ConsoleVari
   const { user } = session;
   const has2fa = user.twoFactorEnabled === true;
   const isAdmin = user.role === "admin";
+  // Only the admin 2FA fields read this (to hide the passkey button), so skip the query elsewhere.
+  const adminHasPasskey = variant === "admin" && has2fa ? await hasPasskey(user.id) : true;
   const defaultOpen = (await cookies()).get("sidebar_state")?.value !== "false";
 
   const switchPanel = !isAdmin
@@ -52,7 +56,7 @@ export async function ConsoleShell({ variant, children }: { variant: ConsoleVari
       <SidebarInset className="min-w-0">
         <ConsoleHeader variant={variant} has2fa={has2fa} />
         <main id="main" className="min-w-0 flex-1 p-4 md:p-6">
-          {children}
+          <HasPasskeyProvider value={adminHasPasskey}>{children}</HasPasskeyProvider>
         </main>
       </SidebarInset>
     </SidebarProvider>
