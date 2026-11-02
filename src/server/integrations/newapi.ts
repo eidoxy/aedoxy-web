@@ -136,7 +136,8 @@ export async function findSubscription(newapiUserId: number, subscriptionId: num
 }
 
 const planResponse = z.union([
-  z.object({ success: z.literal(true), data: z.object({ id: z.number().int().positive() }).optional() }),
+  // PUT answers `data: null` (AdminUpdateSubscriptionPlan), POST answers the plan (AdminCreateSubscriptionPlan).
+  z.object({ success: z.literal(true), data: z.object({ id: z.number().int().positive() }).nullish() }),
   z.object({ success: z.literal(false), message: z.string().optional() }),
 ]);
 
@@ -197,7 +198,8 @@ const pricingItem = z.object({
   model_ratio: z.number(),
   model_price: z.number(),
   completion_ratio: z.number(),
-  enable_groups: z.array(z.string()).default([]),
+  // Go marshals a nil slice as null; `.default` alone would drop such a model.
+  enable_groups: z.array(z.string()).nullish().transform((v) => v ?? []),
   billing_mode: z.string().optional(),
   billing_expr: z.string().optional(),
 });

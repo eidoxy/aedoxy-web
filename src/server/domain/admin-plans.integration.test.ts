@@ -127,6 +127,16 @@ describe("a failed sync keeps the plan off sale", () => {
     expect(fake.newapiPlans.get(7)).toMatchObject({ title: "Bulanan $20 baru" });
   });
 
+  it("updating a plan that already has a New API id syncs when the console answers PUT with data null", async () => {
+    const p = await seedPlan({ newapiPlanId: 7 });
+    await updatePlan(actor, p.id, input({ name: "Baru", creditUsd: "30" }), { confirmCreditChange: true });
+    expect(await syncPlansBestEffort([p.id])).toEqual([{ id: p.id, ok: true }]);
+    const row = await rowOf(p.id);
+    expect(row.fieldsVersion).toBe(2);
+    expect(row.syncedVersion).toBe(row.fieldsVersion);
+    expect(row.newapiPlanId).toBe(7);
+  });
+
   it("an edit made while a sync is running leaves the plan unsynced", async () => {
     const p = await seedPlan({ newapiPlanId: 7 });
     const real = globalThis.fetch;

@@ -31,6 +31,14 @@ describe("fetchPricing", () => {
     expect(pricing.groupRatio).toEqual({ default: 1, vip: 0.8 });
   });
 
+  it("keeps a model whose enable_groups is null (Go nil slice) with an empty list", async () => {
+    const item = { model_name: "m", quota_type: 0, model_ratio: 1, model_price: 0, completion_ratio: 1, enable_groups: null };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: true, data: [item] })));
+    const pricing = await fetchPricing();
+    expect(pricing.skipped).toBe(0);
+    expect(pricing.items[0].enable_groups).toEqual([]);
+  });
+
   it("falls back to the public URL when no internal URL is set", async () => {
     mockEnv.NEWAPI_INTERNAL_URL = undefined;
     const fetchMock = vi.fn().mockResolvedValue(json({ success: true, data: [] }));

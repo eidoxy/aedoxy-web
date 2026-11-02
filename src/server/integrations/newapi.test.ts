@@ -153,6 +153,15 @@ describe("plans, fulfil and single subscription lookup", () => {
     expect(JSON.parse(calls[0][1].body as string)).toEqual({ plan });
   });
 
+  it("upsertPlan accepts the real PUT answer with data null, and rejects other shapes", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ data: null, message: "", success: true })));
+    await expect(upsertPlan(plan, 9)).resolves.toBe(9);
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: "x" })));
+    await expect(upsertPlan(plan, 9)).rejects.toMatchObject({ kind: "invalid_response" });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: null })));
+    await expect(upsertPlan(plan)).rejects.toMatchObject({ kind: "invalid_response" });
+  });
+
   it("upsertPlan maps rejection and a create without an id to typed errors", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ success: false, message: "no" })));
     await expect(upsertPlan(plan)).rejects.toMatchObject({ kind: "rejected" });

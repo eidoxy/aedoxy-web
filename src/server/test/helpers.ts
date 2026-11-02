@@ -158,7 +158,8 @@ export function installFakeServers() {
         const { plan } = JSON.parse(String(init?.body)) as { plan: Record<string, unknown> };
         const id = planPath[1] ? Number(planPath[1]) : newapiPlans.size + 100;
         newapiPlans.set(id, plan);
-        return json({ success: true, message: "", data: { id, ...plan } });
+        // Real console: POST returns the created plan, PUT returns data null.
+        return json({ success: true, message: "", data: method === "POST" ? { id, ...plan } : null });
       }
 
       if (method === "GET" && url.pathname === "/api/group/") {
