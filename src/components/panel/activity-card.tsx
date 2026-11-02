@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { ActivityPoller, clockSnapshot, line, subscribeClock, subscribeNever } from "@/components/marketing/activity-ticker";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MIN_ACTIVITY_ITEMS } from "@/lib/activity";
 import type { ActivityItem } from "@/server/catalog/types";
 
@@ -15,16 +16,22 @@ export function ActivityCard({ initialItems }: { initialItems: ActivityItem[] })
 
   if (items.length < MIN_ACTIVITY_ITEMS) return mounted ? <ActivityPoller initialItems={initialItems} onItems={setItems} /> : null;
   return (
-    <section aria-labelledby="activity-card-title" className="mt-10 rounded-[18px] border border-line bg-surface p-6">
-      {mounted && <ActivityPoller initialItems={initialItems} onItems={setItems} />}
-      <h2 id="activity-card-title" className="text-lg font-medium text-heading">
-        Aktivitas terbaru
-      </h2>
-      <ul className="mt-3 space-y-2 font-mono text-[13px] text-fg-soft">
-        {items.slice(0, SHOWN).map((item) => (
-          <li key={`${item.at}-${item.label}`}>{line(item, now)}</li>
-        ))}
-      </ul>
+    <section aria-labelledby="activity-card-title">
+      <Card>
+        {mounted && <ActivityPoller initialItems={initialItems} onItems={setItems} />}
+        <CardHeader>
+          <CardTitle>
+            <h2 id="activity-card-title">Aktivitas terbaru</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 font-mono text-[13px] text-fg-soft">
+            {items.slice(0, SHOWN).map((item) => (
+              <li key={`${item.at}-${item.label}`}>{line(item, now)}</li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </section>
   );
 }

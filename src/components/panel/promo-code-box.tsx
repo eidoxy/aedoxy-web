@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 export function PromoCodeBox({ appliedCode }: { appliedCode?: string }) {
   const [state, action, pending] = useActionState<ApplyPromoState, FormData>(applyPromoAction, {});
   return (
-    <form action={action} className="mt-6 max-w-md">
+    <form action={action} className="w-full sm:w-96">
       <label htmlFor="kode" className="mono-label mb-1.5 flex items-center gap-1.5">
         <Tag className="size-3.5" aria-hidden /> Kode promo
       </label>

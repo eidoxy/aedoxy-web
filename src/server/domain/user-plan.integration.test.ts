@@ -38,7 +38,7 @@ describe("getActivePlanForUser", () => {
     await grant(me.id, plan.id, "Aktif", days(10));
     await grant(other.id, plan.id, "Milik orang lain", days(20));
 
-    expect(await getActivePlanForUser(me.id, now)).toEqual({ name: "Aktif", endsAt: days(10) });
+    expect(await getActivePlanForUser(me.id, now)).toEqual({ name: "Aktif", endsAt: days(10), creditQuota: 1_000_000 });
   });
 
   it("ignores reconciled (replaced or returned) grants and returns null without any", async () => {

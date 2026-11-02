@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 export function ActivityPreferenceForm({ initialShow }: { initialShow: boolean }) {
   const [state, action, pending] = useActionState<SettingsState, FormData>(saveActivityPreferenceAction, {});
   return (
-    <form action={action} className="mt-8 max-w-xl rounded-[18px] border border-line bg-surface p-6">
+    <form action={action}>
       <div className="flex items-start justify-between gap-6">
         <div>
           <label htmlFor="show" className="text-base font-medium text-heading">

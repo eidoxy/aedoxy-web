@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { OrderBadge } from "@/components/panel/order-badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatIdr } from "@/lib/format";
 import { listOrdersForUser, planNameOf } from "@/server/domain/order-view";
@@ -25,19 +28,20 @@ async function Orders() {
   const rows = await listOrdersForUser(user.id);
 
   return (
-    <div>
-      <p className="eyebrow">Pesanan</p>
-      <h1 className="mt-3 text-4xl font-medium tracking-[-0.04em] text-heading">Riwayat pesanan</h1>
+    <div className="space-y-6">
+      <PageHeader eyebrow="Pesanan" title="Riwayat pesanan" description="Semua pembelian paket Anda, terbaru di atas." />
 
       {rows.length === 0 ? (
-        <div className="mt-8 rounded-[18px] border border-line bg-surface p-6">
-          <p className="text-sm text-fg-muted">Belum ada pesanan.</p>
-          <Button asChild className="mt-4 h-10 px-4 text-sm font-semibold">
-            <Link href="/plans">Lihat paket</Link>
-          </Button>
-        </div>
+        <Card>
+          <CardContent>
+            <p className="text-sm text-fg-muted">Belum ada pesanan.</p>
+            <Button asChild className="mt-4 h-10 px-4 text-sm font-semibold">
+              <Link href="/plans">Lihat paket</Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="mt-8 rounded-[18px] border border-line bg-surface p-2">
+        <TableCard>
           <Table>
             <TableHeader>
               <TableRow>
@@ -68,7 +72,7 @@ async function Orders() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TableCard>
       )}
     </div>
   );

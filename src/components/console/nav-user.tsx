@@ -43,7 +43,6 @@ export function NavUser({ user, switchPanel }: NavUserProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
-  // Same behaviour as SignOutButton.
   async function signOut() {
     setPending(true);
     await authClient.signOut();

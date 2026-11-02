@@ -2,9 +2,12 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { param, type SearchParams } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
 import { ActivityCard } from "@/components/panel/activity-card";
 import { PlanBuyForm } from "@/components/panel/plan-buy-form";
 import { PromoCodeBox } from "@/components/panel/promo-code-box";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { FxFootnote, UsdIdr } from "@/components/usd-idr";
 import { discountPercent, formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { getActivity, getFxRate } from "@/server/catalog";
@@ -61,33 +64,35 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
   const appliedCode = kode && !codeNotice && [...quotes.values()].some((q) => q.codeRejection === null) ? kode : undefined;
 
   return (
-    <div>
-      <p className="eyebrow">Paket</p>
-      <h1 className="mt-3 text-4xl font-medium tracking-[-0.04em] text-heading">Pilih paket kredit</h1>
-      <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-fg-muted">
-        Harga flat dalam rupiah, bayar dengan QRIS. Kredit berlaku selama masa aktif paket dan sisanya hangus setelah itu.
-      </p>
-      <PromoCodeBox appliedCode={appliedCode} />
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Paket"
+        title="Pilih paket kredit"
+        description="Harga flat dalam rupiah, bayar dengan QRIS. Kredit berlaku selama masa aktif paket dan sisanya hangus setelah itu."
+        actions={<PromoCodeBox appliedCode={appliedCode} />}
+      />
       {codeNotice && (
-        <p role="status" className="mt-2 text-sm text-warn">
+        <p role="status" className="text-sm text-warn">
           {codeNotice}
         </p>
       )}
       {kode && !appliedCode && !codeNotice && (
-        <p role="status" className="mt-2 text-sm text-warn">
+        <p role="status" className="text-sm text-warn">
           {rejectionMessage([...quotes.values()][0]?.codeRejection ?? "PROMO_INVALID")}
         </p>
       )}
       {poolStatus === "empty" && (
-        <p role="status" className="mt-6 rounded-xl border border-line bg-alt p-4 text-sm text-fg-soft">
+        <p role="status" className="rounded-xl border border-line bg-alt p-4 text-sm text-fg-soft">
           Stok kredit sedang habis. Paket bisa dibeli lagi setelah stok ditambah.
         </p>
       )}
 
       {onSale.length === 0 ? (
-        <p className="mt-8 rounded-[18px] border border-line bg-surface p-6 text-sm text-fg-muted">Belum ada paket yang dijual saat ini.</p>
+        <Card>
+          <CardContent className="text-sm text-fg-muted">Belum ada paket yang dijual saat ini.</CardContent>
+        </Card>
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {onSale.map((p) => {
             const soldOut = poolStatus === "empty" || (p.stockLimit !== null && p.soldCount >= p.stockLimit);
             const quote = quotes.get(p.id);
@@ -98,7 +103,8 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
             const saving = discountPercent(price, strike);
             const refused = appliedCode && quote?.codeRejection ? rejectionMessage(quote.codeRejection) : null;
             return (
-              <li key={p.id} className="flex flex-col rounded-[18px] border border-line bg-surface p-6 shadow-[0_1px_3px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.02)]">
+              <li key={p.id} className="flex">
+              <Card className="w-full gap-0 px-6 py-6">
                 <h2 className="text-xl font-medium tracking-[-0.02em] text-heading">{p.name}</h2>
                 {p.subtitle && <p className="mt-1 text-sm text-fg-muted">{p.subtitle}</p>}
                 <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
@@ -110,6 +116,7 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
                       <span className="rounded-full bg-primary-tint px-2 py-0.5 text-xs font-medium text-primary-ink">Hemat {saving}%</span>
                     </>
                   )}
+                  {promo?.promo && <Badge variant="secondary">Promo</Badge>}
                 </p>
                 {promo?.promo && (
                   <p className="mt-2 text-xs text-fg-muted">
@@ -137,13 +144,14 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
                   )}
                 </ul>
                 <PlanBuyForm planId={p.id} planName={p.name} hasActive={hasActive} disabled={soldOut} promoCode={appliedCode} />
+              </Card>
               </li>
             );
           })}
         </ul>
       )}
       <ActivityCard initialItems={activity} />
-      <FxFootnote fx={fx} className="mt-6" />
+      <FxFootnote fx={fx} />
     </div>
   );
 }
