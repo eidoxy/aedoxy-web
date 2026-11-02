@@ -40,8 +40,12 @@ const features = tableFeatures({
   paginatedRowModel: createPaginatedRowModel(),
   filterFns: { includesString: filterFn_includesString },
   sortFns: { alphanumeric: sortFn_alphanumeric, text: sortFn_text, basic: sortFn_basic, datetime: sortFn_datetime },
-  columnMeta: metaHelper<{ align?: "right" }>(),
+  columnMeta: metaHelper<{ align?: "right"; hideBelow?: HideBelow }>(),
 });
+
+/** Viewport widths under which a column is hidden (so a wide table fits without sideways scroll). Full class names so Tailwind sees them. */
+const HIDE_BELOW = { xl: "max-xl:hidden", wide: "max-[1359px]:hidden" } as const;
+type HideBelow = keyof typeof HIDE_BELOW;
 
 /** Column definitions for `<DataTable>`: `dataColumns<Row>().columns([c.accessor(...), c.display(...)])`. Cells may render any React node. */
 export const dataColumns = <T extends RowData>() => createColumnHelper<typeof features, T>();
@@ -50,6 +54,7 @@ export const dataColumns = <T extends RowData>() => createColumnHelper<typeof fe
 export type DataColumn<T extends RowData> = ColumnDef<typeof features, T, any>;
 
 const rowSkeletons = 5;
+const hide = (b?: HideBelow) => (b ? HIDE_BELOW[b] : undefined);
 
 /**
  * Table with search, sortable headers and pagination inside a TableCard (it scrolls sideways inside the card).
@@ -70,6 +75,7 @@ export function DataTable<T extends RowData>({
   empty = "Belum ada data.",
   searchLabel = "Cari",
   pageSize = PAGE_SIZE,
+  compact = false,
   className,
 }: {
   data: T[];
@@ -85,6 +91,8 @@ export function DataTable<T extends RowData>({
   empty?: React.ReactNode;
   searchLabel?: string;
   pageSize?: number;
+  /** Tighter cell padding, for tables with many columns. */
+  compact?: boolean;
   className?: string;
 }) {
   const table = useTable({
@@ -124,7 +132,7 @@ export function DataTable<T extends RowData>({
         </div>
       )}
 
-      <TableCard>
+      <TableCard className={cn(compact && "[&_td]:px-2 [&_th]:px-2")}>
         <Table aria-busy={isLoading || undefined}>
           <caption className="sr-only">{caption}</caption>
           <TableHeader>
@@ -139,7 +147,7 @@ export function DataTable<T extends RowData>({
                       key={header.id}
                       scope="col"
                       aria-sort={column.getCanSort() ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
-                      className={cn(right && "text-right")}
+                      className={cn(right && "text-right", hide(column.columnDef.meta?.hideBelow))}
                     >
                       {header.isPlaceholder ? null : column.getCanSort() ? (
                         <button
@@ -196,7 +204,7 @@ export function DataTable<T extends RowData>({
               rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getAllCells().map((cell) => (
-                    <TableCell key={cell.id} className={cn(cell.column.columnDef.meta?.align === "right" && "text-right")}>
+                    <TableCell key={cell.id} className={cn(cell.column.columnDef.meta?.align === "right" && "text-right", hide(cell.column.columnDef.meta?.hideBelow))}>
                       <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}

@@ -53,4 +53,12 @@ describe("DataTable", () => {
     expect(html).not.toContain('type="search"');
     expect(html).not.toContain("Menampilkan");
   });
+
+  it("hides a column below its breakpoint on header and cells, and compact tightens padding", () => {
+    const hidden = dataColumns<Row>().columns([col.accessor("name", { header: "Nama" }), col.accessor("qty", { header: "Jumlah", meta: { hideBelow: "xl" } })]);
+    const html = renderToStaticMarkup(createElement(DataTable<Row>, { data: rows(1), columns: hidden, caption: "Contoh", compact: true }));
+    expect((html.match(/max-xl:hidden/g) ?? []).length).toBe(2);
+    expect(html).toContain("[&amp;_td]:px-2");
+    expect(render({ n: 1 })).not.toContain("max-xl:hidden");
+  });
 });

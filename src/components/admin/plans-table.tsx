@@ -72,8 +72,8 @@ const columns = col.columns([
     cell: (c) => {
       const p = c.row.original;
       return (
-        <div className="flex items-center gap-1">
-          <span className="w-6 font-mono text-xs text-faint">{p.sortOrder}</span>
+        <div className="flex items-center">
+          <span className="w-5 font-mono text-xs text-faint">{p.sortOrder}</span>
           <form action={movePlanAction}>
             <input type="hidden" name="planId" value={p.id} />
             <input type="hidden" name="direction" value="up" />
@@ -95,7 +95,7 @@ const columns = col.columns([
   col.accessor("name", {
     header: "Paket",
     cell: (c) => (
-      <div className="flex w-52 min-w-0 items-center gap-2">
+      <div className="flex w-40 min-w-0 items-center gap-2">
         <Link href={`/admin/plans/${c.row.original.id}`} title={c.getValue()} className="min-w-0 truncate font-medium text-heading underline-offset-4 hover:underline">
           {c.getValue()}
         </Link>
@@ -107,10 +107,10 @@ const columns = col.columns([
       </div>
     ),
   }),
-  col.accessor("period", { header: "Periode", cell: (c) => <span className="text-fg-muted">{c.getValue()}</span> }),
+  col.accessor("period", { header: "Periode", meta: { hideBelow: "xl" }, cell: (c) => <span className="text-fg-muted">{c.getValue()}</span> }),
   col.accessor("creditQuota", {
     header: "Kredit",
-    meta: { align: "right" },
+    meta: { align: "right", hideBelow: "xl" },
     cell: (c) => <span className="font-mono">{formatUsd(c.getValue() / QUOTA_PER_USD)}</span>,
   }),
   col.accessor("priceIdr", {
@@ -121,29 +121,36 @@ const columns = col.columns([
   col.accessor((p) => p.compareAtPriceIdr ?? 0, {
     id: "compareAtPriceIdr",
     header: "Harga coret",
-    meta: { align: "right" },
+    meta: { align: "right", hideBelow: "wide" },
     cell: (c) => <span className="font-mono text-fg-muted">{c.getValue() ? formatIdr(c.getValue()) : "-"}</span>,
   }),
+  // Sold count with revenue underneath: one column instead of two. Sorts by sold count.
   col.accessor("paidCount", {
     header: "Terjual",
-    meta: { align: "right" },
+    meta: { align: "right", hideBelow: "xl" },
     cell: (c) => (
-      <span className="font-mono">
-        {c.getValue()}
-        {c.row.original.stockLimit !== null && <span className="text-faint"> / {c.row.original.stockLimit}</span>}
-      </span>
+      <div className="font-mono leading-tight">
+        <div>
+          {c.getValue()}
+          {c.row.original.stockLimit !== null && <span className="text-faint"> / {c.row.original.stockLimit}</span>}
+        </div>
+        <div className="text-xs text-fg-muted">{formatIdr(c.row.original.revenueIdr)}</div>
+      </div>
     ),
   }),
-  col.accessor("revenueIdr", { header: "Pendapatan", meta: { align: "right" }, cell: (c) => <span className="font-mono">{formatIdr(c.getValue())}</span> }),
-  col.accessor((p) => (p.synced ? "Tersinkron" : "Belum tersinkron"), {
-    id: "synced",
-    header: "Sinkron",
-    cell: (c) => <Badge variant={c.row.original.synced ? "default" : "destructive"}>{c.getValue()}</Badge>,
-  }),
-  col.accessor((p) => (p.enabled ? "Aktif" : "Nonaktif"), {
-    id: "enabled",
+  // Sync and enabled state stacked in one column. The search text covers both.
+  col.accessor((p) => `${p.enabled ? "Aktif" : "Nonaktif"} ${p.synced ? "Tersinkron" : "Belum tersinkron"}`, {
+    id: "status",
     header: "Status",
-    cell: (c) => <Badge variant={c.row.original.enabled ? "outline" : "secondary"}>{c.getValue()}</Badge>,
+    cell: (c) => {
+      const p = c.row.original;
+      return (
+        <div className="flex flex-col items-start gap-1">
+          <Badge variant={p.enabled ? "outline" : "secondary"}>{p.enabled ? "Aktif" : "Nonaktif"}</Badge>
+          <Badge variant={p.synced ? "default" : "destructive"}>{p.synced ? "Tersinkron" : "Belum tersinkron"}</Badge>
+        </div>
+      );
+    },
   }),
   col.display({
     id: "actions",
@@ -157,5 +164,5 @@ const columns = col.columns([
 ]);
 
 export function PlansTable({ rows }: { rows: PlanTableRow[] }) {
-  return <DataTable data={rows} columns={columns} caption="Daftar paket" searchLabel="Cari paket" getRowId={(p) => String(p.id)} empty="Belum ada paket." />;
+  return <DataTable data={rows} columns={columns} caption="Daftar paket" compact searchLabel="Cari paket" getRowId={(p) => String(p.id)} empty="Belum ada paket." />;
 }
