@@ -18,7 +18,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <ThemeToggle />
           </div>
           <div className="mt-4 md:mt-0">
-            <AdminNav />
+            <Suspense fallback={<div aria-hidden className="h-12 rounded-lg bg-alt md:h-96" />}>
+              <AdminNav />
+            </Suspense>
           </div>
         </aside>
         <main id="main" className="min-w-0 flex-1">
