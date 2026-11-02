@@ -55,7 +55,8 @@ export async function getCatalog(): Promise<Catalog> {
     return { ...lastGood, state: "ok" };
   } catch (err) {
     warn("models unavailable", err);
-    cacheLife({ stale: 30, revalidate: 30, expire: 60 });
+    // expire must stay >= 5 min: shorter caches are excluded from prerender and fail the build when New API is down.
+    cacheLife({ stale: 30, revalidate: 30, expire: 300 });
     return lastGood ? { ...lastGood, state: "stale" } : { models: [], providers: [], state: "unavailable" };
   }
 }
