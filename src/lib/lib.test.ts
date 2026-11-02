@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseEnv } from "@/env";
 import { maskName, pickActivityRows, roundToMinute, visibleActivity, type ActivityRow } from "./activity";
-import { discountPercent, formatAge, formatIdr, formatTokens, formatUsd } from "./format";
+import { discountPercent, formatAge, formatIdr, formatRemaining, formatTokens, formatUsd, initials } from "./format";
 import { fxNote, usdToIdr } from "./fx";
 import { filterModels, savingPercent } from "./models";
 import type { ActivityItem, FxRate, Model } from "@/server/catalog/types";
@@ -38,6 +38,17 @@ describe("format", () => {
     expect(formatTokens(1_050_000)).toBe("1.05M");
     expect(formatTokens(128_000)).toBe("128K");
     expect(formatTokens(2_700_000_000)).toBe("2.7B");
+  });
+  it("formats time remaining and initials", () => {
+    const now = new Date("2026-11-02T00:00:00Z");
+    const at = (ms: number) => new Date(now.getTime() + ms);
+    expect(formatRemaining(at(-1), now)).toBe("berakhir");
+    expect(formatRemaining(at(59 * 60_000), now)).toBe("kurang dari 1 jam");
+    expect(formatRemaining(at(5 * 3_600_000 + 1), now)).toBe("5 jam lagi");
+    expect(formatRemaining(at(12 * 86_400_000 + 3_600_000), now)).toBe("12 hari lagi");
+    expect(initials("Ayu Lestari Putri")).toBe("AP");
+    expect(initials("ayu")).toBe("A");
+    expect(initials("  ")).toBe("?");
   });
   it("formats relative age and discounts", () => {
     expect(formatAge(30_000)).toBe("baru saja");

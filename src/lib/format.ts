@@ -36,6 +36,23 @@ export function formatAge(ms: number): string {
   return `${Math.floor(hours / 24)} hari lalu`;
 }
 
+/** "Ayu Lestari" -> "AL", "ayu" -> "A", "" -> "?". */
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return (parts.length === 1 ? parts[0][0] : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** Indonesian time left until `endsAt`, e.g. "12 hari lagi", "5 jam lagi", "kurang dari 1 jam". */
+export function formatRemaining(endsAt: Date, now = new Date()): string {
+  const ms = endsAt.getTime() - now.getTime();
+  if (ms <= 0) return "berakhir";
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 1) return "kurang dari 1 jam";
+  if (hours < 24) return `${hours} jam lagi`;
+  return `${Math.floor(hours / 24)} hari lagi`;
+}
+
 /** Percent saved by a compare-at price, or null when there is no saving. */
 export function discountPercent(price: number, compareAt: number | null): number | null {
   if (compareAt === null || compareAt <= price) return null;
