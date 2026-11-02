@@ -43,6 +43,12 @@ describe("menu config", () => {
     for (const href of hrefs) expect(patterns.some((p) => p.test(href)), `no page for ${href}`).toBe(true);
   });
 
+  it("Pengaturan situs sits in the Sistem group and is hidden from an admin without 2FA", () => {
+    const system = adminNav.find((g) => g.id === "system")!;
+    expect(system.items.map((i) => i.url)).toContain("/admin/settings");
+    expect(navHrefs(adminNavFor(false))).not.toContain("/admin/settings");
+  });
+
   it("admin menu without 2FA contains only Keamanan", () => {
     const groups = adminNavFor(false);
     expect(labels(groups)).toEqual(["Keamanan"]);
@@ -96,6 +102,7 @@ describe("active item and page title", () => {
     expect(pageTitle(userNav, "/settings")).toBe("Pengaturan");
     expect(pageTitle(adminNav, "/admin/plans/new")).toBe("Buat paket");
     expect(pageTitle(adminNav, "/admin/audit")).toBe("Audit log");
+    expect(pageTitle(adminNav, "/admin/settings")).toBe("Pengaturan situs");
     expect(pageTitle(userNav, "/nowhere")).toBe("");
   });
 });
