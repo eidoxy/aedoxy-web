@@ -36,6 +36,13 @@
       "when": 1793621428439,
       "tag": "0004_passkey_fresh_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793626719642,
+      "tag": "0005_site_assets",
+      "breakpoints": true
     }
   ]
 }

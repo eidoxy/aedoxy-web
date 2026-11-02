@@ -6,7 +6,7 @@ import { getDisplayFx } from "@/server/domain/fx-rate";
 import { fetchPricing } from "@/server/integrations/newapi";
 import { buildCatalog, type BuiltCatalog } from "./models";
 import { loadPlans } from "./plans";
-import type { Announcement, Model, Plan, Provider, RankingEntry, Stats } from "./types";
+import type { Model, Plan, Provider, RankingEntry, Stats } from "./types";
 
 export type * from "./types";
 
@@ -89,10 +89,8 @@ export async function getStats(): Promise<Stats> {
   return { models: catalog.models.length, providers: catalog.providers.length, plans: plans.length };
 }
 
-/** No source yet: the bar stays hidden rather than showing invented text. */
-export async function getAnnouncement(): Promise<Announcement | null> {
-  return null;
-}
+/** From /admin/settings. Hidden while switched off or incomplete, never invented text. */
+export { getAnnouncement } from "@/server/site";
 
 /** No usage data yet, so the rankings section stays hidden (UI-GUIDE section 7). */
 export async function getRankings(): Promise<RankingEntry[]> {

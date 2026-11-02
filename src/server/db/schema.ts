@@ -13,6 +13,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   index,
   integer,
@@ -313,6 +314,23 @@ export const siteSettings = pgTable("site_settings", {
   value: jsonb("value").notNull(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
+
+const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+/** Uploaded site images (admin > Pengaturan situs): one row per kind. Served by /brand/[kind]. */
+export const siteAssets = pgTable(
+  "site_assets",
+  {
+    kind: text("kind").primaryKey(),
+    contentType: text("content_type").notNull(),
+    bytes: bytea("bytes").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    sha256: text("sha256").notNull(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [check("site_assets_kind", sql`${t.kind} in ('logo', 'favicon', 'og')`)],
+);
 
 /** Catalog metadata New API does not keep (F08). */
 export const modelMeta = pgTable("model_meta", {
