@@ -5,12 +5,14 @@ import { param, type SearchParams } from "@/components/admin/common";
 import { PageHeader } from "@/components/console/page-header";
 import { ActivityCard } from "@/components/panel/activity-card";
 import { PlanBuyForm } from "@/components/panel/plan-buy-form";
+import { PlanGrid } from "@/components/panel/plan-grid";
 import { PromoCodeBox } from "@/components/panel/promo-code-box";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { FxFootnote, UsdIdr } from "@/components/usd-idr";
 import { buildBuySummary, durationLabel } from "@/lib/buy-summary";
 import { discountPercent, formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
+import { parsePeriodTab, planCategory } from "@/lib/plan-category";
 import { getActivity, getFxRate } from "@/server/catalog";
 import { getPendingOrderId } from "@/server/domain/order-view";
 import { listOnSalePlans } from "@/server/domain/plan-sellable";
@@ -85,8 +87,9 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
           <CardContent className="text-sm text-fg-muted">Belum ada paket yang dijual saat ini.</CardContent>
         </Card>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-          {onSale.map((p) => {
+        <PlanGrid
+          initialTab={parsePeriodTab(param((await searchParams).periode))}
+          items={onSale.map((p) => {
             const soldOut = poolStatus === "empty" || (p.stockLimit !== null && p.soldCount >= p.stockLimit);
             const quote = quotes.get(p.id);
             const promo = quote && quote.choice.promo ? quote.choice : null;
@@ -95,8 +98,7 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
             const strike = promo ? p.priceIdr : p.compareAtPriceIdr;
             const saving = discountPercent(price, strike);
             const refused = appliedCode && quote?.codeRejection ? rejectionMessage(quote.codeRejection) : null;
-            return (
-              <li key={p.id} className="flex">
+            const node = (
               <Card className="w-full gap-0 px-6 py-6">
                 <h2 className="text-xl font-medium tracking-[-0.02em] text-heading">{p.name}</h2>
                 {p.subtitle && <p className="mt-1 text-sm text-fg-muted">{p.subtitle}</p>}
@@ -155,10 +157,10 @@ async function Plans({ searchParams }: { searchParams: SearchParams }) {
                   })}
                 />
               </Card>
-              </li>
             );
+            return { id: p.id, category: planCategory(p), node };
           })}
-        </ul>
+        />
       )}
       <ActivityCard initialItems={activity} />
       <FxFootnote fx={fx} />
