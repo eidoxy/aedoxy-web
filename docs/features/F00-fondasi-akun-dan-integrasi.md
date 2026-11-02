@@ -29,7 +29,7 @@ Ukuran: S ≤ 1 hari, M 2–3 hari, L 4–7 hari. Ini perkiraan untuk satu devel
 | 1 | Inisialisasi Next.js + TypeScript strict + Tailwind 4 + shadcn/ui + Bun. Validasi env dengan Zod di `env.ts` | S |
 | 2 | Drizzle + migrasi awal + DB `aedoxy` dan user DB terpisah di Postgres yang ada | S |
 | 3 | Better Auth: email/password + verifikasi email, Google, plugin `admin` dan `twoFactor`, halaman auth | M |
-| 4 | Plugin OAuth 2.1 Provider + client "new-api" (redirect URI persis, PKCE), halaman consent/skip | M |
+| 4 | Plugin OAuth 2.1 Provider + client "gateway-aedoxy" (redirect URI persis, PKCE), halaman consent/skip | M |
 | 5 | Fork Go: `model/aedoxy_bridge.go`, `controller/aedoxy_bridge.go`, 2 route, 2 aturan scope, test di tiga database (`../TRD.md` 7.1) | L |
 | 6 | Konfigurasi New API: custom OAuth "Aedoxy", matikan sumber kredit di luar pool, `TopUpLink`, akun layanan `aedoxy-bridge` + access token (`../TRD.md` 7.3) | S |
 | 7 | `integrations/newapi.ts`: klien bridge + endpoint admin, timeout 5 detik, error bertipe | S |

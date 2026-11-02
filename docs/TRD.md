@@ -16,7 +16,7 @@
         │ aedoxy.com                                           │ ai.aedoxy.com
         ▼                                                      ▼
  ┌───────────────────────────┐   OIDC (login Aedoxy)   ┌──────────────────────────┐
- │ aedoxy-web (Next.js)      │◀────────────────────────│ new-api (gateway-aedoxy) │
+ │ aedoxy-web (Next.js)      │◀────────────────────────│ gateway-aedoxy           │
  │ - landing, panel, admin   │                         │ - console, API key, log  │
  │ - Better Auth + OIDC IdP  │  HTTP internal (Docker) │ - relay + potong kredit  │
  │ - paket, order, pool,     │────────────────────────▶│   paket                  │
@@ -25,7 +25,7 @@
  └──────────┬────────────────┘                         └────────────┬─────────────┘
             │                                                        │
  ┌──────────▼────────────────┐                          ┌────────────▼─────────────┐
- │ aedoxy-worker (Node)      │                          │ Postgres DB "new-api"    │
+ │ aedoxy-worker (Node)      │                          │ PG DB gateway-aedoxy     │
  │ - outbox aktivasi paket   │                          │ Redis                    │
  │ - sapu order kedaluwarsa  │                          └──────────────────────────┘
  │ - kurs tampilan berkala   │
@@ -50,7 +50,7 @@
 | D5 | **Pool di DB aedoxy** dalam satuan kuota New API (`quota_per_unit`, default 500.000 = $1). Kredit paket direservasi saat order dibuat, dipindah ke terjual saat lunas, dan dilepas saat order kedaluwarsa. Sisa kredit dikembalikan ke pool setelah paket hangus. | Pool di New API. Ditolak karena keputusan menjual atau tidak menjual ada di sisi commerce. |
 | D6 | **Paket diaktifkan lewat outbox + worker.** Webhook hanya mencatat status lunas dan membuat baris `fulfillments` dalam satu transaksi. Worker memanggil bridge dengan retry. | Memanggil New API langsung di dalam webhook. Ditolak karena Poketo menunggu balasan maksimal 10 detik, dan jika console sedang down paket akan hilang tanpa jejak. |
 | D7 | **Kurs hanya untuk tampilan.** Kurs disimpan di aedoxy (mode manual atau otomatis; sumber Frankfurter/ECB, cadangan open.er-api) dan hanya dipakai untuk keterangan "≈ Rp" di panel dan katalog. Nominal pembayaran selalu harga flat paket. | Menghitung harga dari kurs. Ditolak karena harga ditetapkan flat oleh admin. |
-| D8 | **Satu server Postgres, dua database** (`new-api` dan `aedoxy`) dengan user DB terpisah. Next.js tidak pernah membaca atau menulis tabel New API secara langsung. | Satu database bersama. Ditolak karena Next.js akan terikat skema upstream dan melewati cache Redis New API. |
+| D8 | **Satu server Postgres, dua database** (`gateway-aedoxy` dan `aedoxy`) dengan user DB terpisah. Next.js tidak pernah membaca atau menulis tabel New API secara langsung. | Satu database bersama. Ditolak karena Next.js akan terikat skema upstream dan melewati cache Redis New API. |
 | D9 | **Tanpa antrean eksternal.** Worker memakai tabel Postgres dengan `FOR UPDATE SKIP LOCKED` dan interval timer. | BullMQ atau pg-boss. Belum perlu untuk volume awal. |
 
 ## 3. Sumber kebenaran
@@ -143,7 +143,7 @@ Order tidak menyimpan kurs, karena kurs tidak memengaruhi nominal pembayaran.
 
 ### 7.1 Bridge di fork `gateway-aedoxy` (kode baru)
 
-Semua endpoint berada di bawah `/api/aedoxy` dan memakai `middleware.AdminAuth()` + access token `nap_` milik akun layanan khusus (`aedoxy-bridge`). Akun ini hanya punya scope `user:read`, `user:write`, `billing:read`, `billing:write`. Endpoint bridge diblokir dari internet oleh Caddy, dan Next.js memanggilnya lewat jaringan Docker (`http://new-api:3000`).
+Semua endpoint berada di bawah `/api/aedoxy` dan memakai `middleware.AdminAuth()` + access token `nap_` milik akun layanan khusus (`aedoxy-bridge`). Akun ini hanya punya scope `user:read`, `user:write`, `billing:read`, `billing:write`. Endpoint bridge diblokir dari internet oleh Caddy, dan Next.js memanggilnya lewat jaringan Docker (`http://gateway-aedoxy:3000`).
 
 **`POST /api/aedoxy/accounts/ensure`** (scope `user:write`)
 
@@ -312,17 +312,17 @@ aedoxy.com {
 ai.aedoxy.com {
     @bridge path /api/aedoxy/*
     respond @bridge 404
-    reverse_proxy new-api:3000 { flush_interval -1 }
+    reverse_proxy gateway-aedoxy:3000 { flush_interval -1 }
 }
 ```
 
 `Caddyfile` saat ini masih memakai `ai.obersa.my.id`. Ganti domainnya ke `ai.aedoxy.com`. Domain lama tidak punya user, jadi tidak perlu masa transisi.
 
-**Target: satu VPS NAT bersama New API.** `aedoxy-web`, `aedoxy-worker`, `new-api`, Postgres, dan Redis berada di network Docker `new-api-network` yang sama, sehingga bridge dipanggil lewat `http://new-api:3000` tanpa keluar ke internet. Hal yang perlu dicek di VPS NAT:
+**Target: satu VPS NAT bersama New API.** `aedoxy-web`, `aedoxy-worker`, `gateway-aedoxy`, Postgres, dan Redis berada di network Docker `aedoxy` yang sama, sehingga bridge dipanggil lewat `http://gateway-aedoxy:3000` tanpa keluar ke internet. Hal yang perlu dicek di VPS NAT:
 - Port 80/443 publik harus di-forward ke Caddy. Poketo wajib bisa menjangkau `https://aedoxy.com/api/webhooks/poketo` tanpa redirect, dan Let's Encrypt butuh port 80 atau 443 untuk sertifikat. Bila provider NAT hanya memberi port tinggi, pakai Cloudflare Tunnel atau DNS challenge.
 - RAM: Next.js standalone sekitar 150–250 MB, worker sekitar 100 MB. Build image dilakukan di CI (workflow `deploy.yml` yang sudah ada), bukan di VPS.
 
-Environment variable `aedoxy-web` dan `aedoxy-worker`: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID/SECRET`, `EMAIL_*`, `POKETO_SECRET_KEY`, `POKETO_WEBHOOK_SECRET`, `NEWAPI_INTERNAL_URL=http://new-api:3000`, `NEWAPI_BRIDGE_TOKEN`, `NEWAPI_PUBLIC_URL=https://ai.aedoxy.com`, `ALERT_WEBHOOK_URL` (opsional).
+Environment variable `aedoxy-web` dan `aedoxy-worker`: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID/SECRET`, `EMAIL_*`, `POKETO_SECRET_KEY`, `POKETO_WEBHOOK_SECRET`, `NEWAPI_INTERNAL_URL=http://gateway-aedoxy:3000`, `NEWAPI_BRIDGE_TOKEN`, `NEWAPI_PUBLIC_URL=https://ai.aedoxy.com`, `ALERT_WEBHOOK_URL` (opsional).
 
 ## 13. Observability dan alert
 
