@@ -1,4 +1,4 @@
-import { formatIdr } from "@/lib/format";
+import { formatIdr, QUOTA_PER_USD } from "@/lib/format";
 import { fxNote, usdToIdr } from "@/lib/fx";
 import { cn } from "@/lib/utils";
 import type { FxRate } from "@/server/catalog/types";
@@ -9,15 +9,15 @@ import type { FxRate } from "@/server/catalog/types";
  * nothing when conversion is switched off or no rate exists.
  */
 export function UsdIdr({
-  usd,
   fx,
   className,
-}: {
-  usd: number;
+  ...amount
+}: ({ usd: number } | { quota: number }) & {
   fx: FxRate | null;
   className?: string;
 }) {
   if (!fx || !fx.showConversion) return null;
+  const usd = "usd" in amount ? amount.usd : amount.quota / QUOTA_PER_USD;
   return (
     <span title={fxNote(fx)} className={cn("font-mono text-xs text-faint", className)}>
       <span aria-hidden>≈ </span>

@@ -5,6 +5,7 @@
  */
 import { pool } from "@/server/db/client";
 import { processFulfillments } from "@/server/domain/fulfillment";
+import { refreshFxIfDue } from "@/server/domain/fx-rate";
 import { retryUnsyncedPlans } from "@/server/domain/plan-sync";
 import { checkPoolInvariant } from "@/server/domain/pool-invariant";
 import { sweepPendingOrders } from "@/server/domain/order-sweeper";
@@ -27,6 +28,8 @@ const tasks: WorkerTask[] = [
   { name: "reconcile-grants", everyMs: 15 * MINUTE, run: () => reconcileExpiredGrants() },
   { name: "pool-invariant", everyMs: 60 * MINUTE, run: () => checkPoolInvariant() },
   { name: "plan-sync-retry", everyMs: 60 * MINUTE, run: () => retryUnsyncedPlans() },
+  // Checks every 5 minutes whether the newest quote is older than fx_settings.refresh_hours; only then it fetches.
+  { name: "fx-refresh", everyMs: 5 * MINUTE, run: () => refreshFxIfDue() },
 ];
 
 const controller = new AbortController();

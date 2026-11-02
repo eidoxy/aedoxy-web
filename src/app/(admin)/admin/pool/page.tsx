@@ -4,9 +4,11 @@ import { adminDate, Card, Field, NativeSelect, PageHeader, PAGE_SIZE, Pagination
 import { AdjustPoolForm, ThresholdForm } from "@/components/admin/pool-forms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UsdIdr } from "@/components/usd-idr";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { requireAdmin } from "@/server/admin";
+import { getFxRate } from "@/server/catalog";
 import { getPoolOverview, LEDGER_TYPES, listLedger } from "@/server/domain/admin-pool";
 import { DEFAULT_LOW_THRESHOLD_QUOTA } from "@/server/domain/pool-status";
 
@@ -29,7 +31,7 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const filter = { type: param(sp.type), from: param(sp.from), to: param(sp.to) };
   const page = pageParam(sp.page);
-  const [overview, ledger] = await Promise.all([getPoolOverview(), listLedger(filter, page, PAGE_SIZE)]);
+  const [overview, ledger, fx] = await Promise.all([getPoolOverview(), listLedger(filter, page, PAGE_SIZE), getFxRate()]);
 
   const exportQuery = new URLSearchParams(Object.entries(filter).filter((e): e is [string, string] => Boolean(e[1]))).toString();
 
@@ -44,8 +46,8 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
       ) : (
         <>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Stat label="Tersedia" value={usd(overview.available)} hint={both(overview.available)} tone={overview.available < 0 ? "danger" : undefined} />
-            <Stat label="Total" value={usd(overview.total)} hint={both(overview.total)} />
+            <Stat label="Tersedia" value={usd(overview.available)} hint={<>{both(overview.available)} <UsdIdr quota={overview.available} fx={fx} /></>} tone={overview.available < 0 ? "danger" : undefined} />
+            <Stat label="Total" value={usd(overview.total)} hint={<>{both(overview.total)} <UsdIdr quota={overview.total} fx={fx} /></>} />
             <Stat label="Terjual" value={usd(overview.sold)} hint={both(overview.sold)} />
             <Stat label="Direservasi" value={usd(overview.reserved)} hint={`${both(overview.reserved)} · order menunggu bayar`} />
             <Stat label="Terpakai" value={`${overview.usedPct}%`} hint="(terjual + direservasi) / total" />

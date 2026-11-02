@@ -1,5 +1,6 @@
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { visibleActivity } from "@/lib/activity";
+import { getDisplayFx } from "@/server/domain/fx-rate";
 import { mockCatalog } from "./mock";
 import type { CatalogSource } from "./types";
 
@@ -28,10 +29,18 @@ export async function getModels() {
   return source.getModels();
 }
 
+/** Real data (fx_settings / fx_rates), not the mock. /admin/fx expires the "fx" tag on every change. */
 export async function getFxRate() {
   "use cache";
   cacheLife("hours");
-  return source.getFxRate();
+  cacheTag("fx");
+  try {
+    return await getDisplayFx();
+  } catch (err) {
+    // A rupiah hint is optional: without a database the public pages still render.
+    console.warn("[fx] display rate unavailable", err instanceof Error ? err.message : "unknown");
+    return null;
+  }
 }
 
 export async function getStats() {

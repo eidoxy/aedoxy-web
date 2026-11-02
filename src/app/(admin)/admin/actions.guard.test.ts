@@ -4,7 +4,7 @@ const current = vi.hoisted(() => ({ session: null as unknown }));
 vi.mock("@/server/session", () => ({ getSession: async () => current.session }));
 vi.mock("@/server/auth", () => ({ auth: { api: {} } }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("next/cache", () => ({ revalidatePath: () => {}, updateTag: () => {} }));
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NOT_FOUND");
@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { getAdminAccess } from "@/server/admin";
+import { refreshFxAction, saveFxSettingsAction } from "./fx/actions";
 import { retryFulfillmentAction } from "./orders/actions";
 import { duplicatePlanAction, movePlanAction, savePlanAction, setEnabledAction, setPriceAction } from "./plans/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
@@ -28,6 +29,8 @@ const actions = {
   setPriceAction,
   setEnabledAction,
   retryFulfillmentAction,
+  saveFxSettingsAction,
+  refreshFxAction,
 };
 const plain = { duplicatePlanAction, movePlanAction };
 

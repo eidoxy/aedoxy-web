@@ -3,7 +3,9 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PlanBuyForm } from "@/components/panel/plan-buy-form";
+import { FxFootnote, UsdIdr } from "@/components/usd-idr";
 import { discountPercent, formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
+import { getFxRate } from "@/server/catalog";
 import { db } from "@/server/db/client";
 import { plans } from "@/server/db/schema";
 import { planIsSynced } from "@/server/domain/plan-sellable";
@@ -36,11 +38,12 @@ async function hasActivePlan(newapiUserId: number | null) {
 async function Plans() {
   const { user } = await requireSession();
   const now = new Date();
-  const [rows, poolStatus, hasActive] = await Promise.all([
+  const [rows, poolStatus, hasActive, fx] = await Promise.all([
     // Only plans that exist in New API can be bought (createPlanOrder enforces it too).
     db.select().from(plans).where(and(eq(plans.enabled, true), planIsSynced)).orderBy(asc(plans.sortOrder), asc(plans.id)),
     getPoolStatus(),
     hasActivePlan(user.newapiUserId ?? null),
+    getFxRate(),
   ]);
   const onSale = rows.filter((p) => (!p.saleStartsAt || p.saleStartsAt <= now) && (!p.saleEndsAt || p.saleEndsAt > now));
 
@@ -81,7 +84,9 @@ async function Plans() {
                 <ul className="mt-5 flex-1 space-y-2 border-t border-line pt-4 text-sm text-fg-muted">
                   <li className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-primary-ink" aria-hidden />
-                    {formatUsd(p.creditQuota / QUOTA_PER_USD)} kredit
+                    <span>
+                      {formatUsd(p.creditQuota / QUOTA_PER_USD)} kredit <UsdIdr quota={p.creditQuota} fx={fx} />
+                    </span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-primary-ink" aria-hidden />
@@ -100,6 +105,7 @@ async function Plans() {
           })}
         </ul>
       )}
+      <FxFootnote fx={fx} className="mt-6" />
     </div>
   );
 }
