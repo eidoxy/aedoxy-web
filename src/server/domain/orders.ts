@@ -6,6 +6,7 @@ import { fulfillments, orders, plans, user } from "@/server/db/schema";
 import { listActiveSubscriptions, NewApiError } from "@/server/integrations/newapi";
 import { createInvoice } from "@/server/integrations/poketo";
 import * as pool from "./pool";
+import { isPlanSynced, planIsSynced } from "./plan-sellable";
 import { computeOrderAmount, generateTradeNo } from "./pricing";
 
 /**
@@ -78,7 +79,7 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
 
   const [account] = await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, userId)).limit(1);
   const [plan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
-  if (!account || !plan || !plan.enabled || plan.newapiPlanId == null) {
+  if (!account || !plan || !plan.enabled || !isPlanSynced(plan)) {
     throw new OrderError("PLAN_UNAVAILABLE", "Paket tidak tersedia.");
   }
   const now = new Date();
@@ -155,7 +156,7 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
     const stock = await tx
       .update(plans)
       .set({ soldCount: sql`${plans.soldCount} + 1`, updatedAt: sql`now()` })
-      .where(and(eq(plans.id, plan.id), eq(plans.enabled, true), sql`(${plans.stockLimit} is null or ${plans.soldCount} < ${plans.stockLimit})`))
+      .where(and(eq(plans.id, plan.id), eq(plans.enabled, true), planIsSynced, sql`(${plans.stockLimit} is null or ${plans.soldCount} < ${plans.stockLimit})`))
       .returning({ id: plans.id });
     if (stock.length === 0 || !(await pool.reserve(tx, plan.creditQuota, inserted.id))) {
       throw new OrderError("OUT_OF_STOCK", "Stok paket habis.");

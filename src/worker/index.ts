@@ -5,6 +5,7 @@
  */
 import { pool } from "@/server/db/client";
 import { processFulfillments } from "@/server/domain/fulfillment";
+import { retryUnsyncedPlans } from "@/server/domain/plan-sync";
 import { checkPoolInvariant } from "@/server/domain/pool-invariant";
 import { sweepPendingOrders } from "@/server/domain/order-sweeper";
 import { reconcileExpiredGrants } from "@/server/domain/reconcile";
@@ -25,6 +26,7 @@ const tasks: WorkerTask[] = [
   { name: "order-sweeper", everyMs: 5 * MINUTE, run: () => sweepPendingOrders() },
   { name: "reconcile-grants", everyMs: 15 * MINUTE, run: () => reconcileExpiredGrants() },
   { name: "pool-invariant", everyMs: 60 * MINUTE, run: () => checkPoolInvariant() },
+  { name: "plan-sync-retry", everyMs: 60 * MINUTE, run: () => retryUnsyncedPlans() },
 ];
 
 const controller = new AbortController();

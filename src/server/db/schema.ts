@@ -107,6 +107,10 @@ export const plans = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     newapiPlanId: integer("newapi_plan_id"),
     syncedAt: ts("synced_at"),
+    /** Bumped whenever a field mirrored in New API changes. A plan is sellable only while `synced_version` equals it (F05). */
+    fieldsVersion: integer("fields_version").notNull().default(1),
+    /** `fields_version` that the last successful sync pushed; null = never synced. */
+    syncedVersion: integer("synced_version"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },

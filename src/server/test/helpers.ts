@@ -63,6 +63,8 @@ export async function seedPlan(overrides: Partial<typeof plans.$inferInsert> = {
       priceIdr: 55_000,
       newapiPlanId: 7,
       ...overrides,
+      // A plan with a console id is seeded as synced unless the test says otherwise.
+      syncedVersion: overrides.syncedVersion !== undefined ? overrides.syncedVersion : overrides.newapiPlanId === null ? null : 1,
     })
     .returning();
   return row;

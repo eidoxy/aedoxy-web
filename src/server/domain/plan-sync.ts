@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { plans } from "@/server/db/schema";
-import { upsertPlan, type NewApiPlanInput } from "@/server/integrations/newapi";
+import { NewApiError, upsertPlan, type NewApiPlanInput } from "@/server/integrations/newapi";
+import { planIsSynced } from "./plan-sellable";
 
 /**
  * Pushes one plan to New API (TRD 7.3, F05). Pool-only settings are fixed here:
@@ -34,6 +35,34 @@ export async function syncPlan(planId: number): Promise<{ newapiPlanId: number }
     quota_reset_period: "never",
   };
   const newapiPlanId = await upsertPlan(payload, plan.newapiPlanId);
-  await db.update(plans).set({ newapiPlanId, syncedAt: new Date(), updatedAt: new Date() }).where(eq(plans.id, plan.id));
+  // Records the version that was pushed, so an edit made during the call leaves the plan unsynced.
+  await db
+    .update(plans)
+    .set({ newapiPlanId, syncedAt: new Date(), syncedVersion: plan.fieldsVersion, updatedAt: new Date() })
+    .where(eq(plans.id, plan.id));
   return { newapiPlanId };
+}
+
+/**
+ * Hourly retry (F05): pushes every plan whose New API copy is stale or missing.
+ * A disabled plan that was never pushed is skipped; it syncs once it is enabled.
+ */
+export async function retryUnsyncedPlans() {
+  const pending = await db
+    .select({ id: plans.id, slug: plans.slug })
+    .from(plans)
+    .where(and(sql`not coalesce(${planIsSynced}, false)`, or(isNotNull(plans.newapiPlanId), eq(plans.enabled, true))))
+    .orderBy(plans.sortOrder, plans.id);
+  let synced = 0;
+  const failed: { slug: string; reason: string }[] = [];
+  for (const p of pending) {
+    try {
+      await syncPlan(p.id);
+      synced++;
+    } catch (err) {
+      failed.push({ slug: p.slug, reason: err instanceof NewApiError ? `${err.kind}: ${err.message}` : "unexpected error" });
+    }
+  }
+  if (failed.length > 0) console.warn("[plan-sync] retry failed", failed);
+  return { synced, failed };
 }

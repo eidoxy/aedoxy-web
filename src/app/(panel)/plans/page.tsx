@@ -1,11 +1,12 @@
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PlanBuyForm } from "@/components/panel/plan-buy-form";
-import { formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
+import { discountPercent, formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { db } from "@/server/db/client";
 import { plans } from "@/server/db/schema";
+import { planIsSynced } from "@/server/domain/plan-sellable";
 import { getPoolStatus } from "@/server/domain/pool-status";
 import { listActiveSubscriptions } from "@/server/integrations/newapi";
 import { requireSession } from "@/server/session";
@@ -37,7 +38,7 @@ async function Plans() {
   const now = new Date();
   const [rows, poolStatus, hasActive] = await Promise.all([
     // Only plans that exist in New API can be bought (createPlanOrder enforces it too).
-    db.select().from(plans).where(and(eq(plans.enabled, true), isNotNull(plans.newapiPlanId))).orderBy(asc(plans.sortOrder), asc(plans.id)),
+    db.select().from(plans).where(and(eq(plans.enabled, true), planIsSynced)).orderBy(asc(plans.sortOrder), asc(plans.id)),
     getPoolStatus(),
     hasActivePlan(user.newapiUserId ?? null),
   ]);
@@ -62,13 +63,20 @@ async function Plans() {
         <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {onSale.map((p) => {
             const soldOut = poolStatus === "empty" || (p.stockLimit !== null && p.soldCount >= p.stockLimit);
+            const saving = discountPercent(p.priceIdr, p.compareAtPriceIdr);
             return (
               <li key={p.id} className="flex flex-col rounded-[18px] border border-line bg-surface p-6 shadow-[0_1px_3px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.02)]">
                 <h2 className="text-xl font-medium tracking-[-0.02em] text-heading">{p.name}</h2>
                 {p.subtitle && <p className="mt-1 text-sm text-fg-muted">{p.subtitle}</p>}
-                <p className="mt-5 flex items-baseline gap-1.5">
+                <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                   <span className="text-[34px] leading-none font-medium tracking-[-0.045em] text-heading">{formatIdr(p.priceIdr)}</span>
                   <span className="font-mono text-xs text-faint">/ {duration(p)}</span>
+                  {saving !== null && (
+                    <>
+                      <s className="ml-1 text-sm text-faint">{formatIdr(p.compareAtPriceIdr as number)}</s>
+                      <span className="rounded-full bg-primary-tint px-2 py-0.5 text-xs font-medium text-primary-ink">Hemat {saving}%</span>
+                    </>
+                  )}
                 </p>
                 <ul className="mt-5 flex-1 space-y-2 border-t border-line pt-4 text-sm text-fg-muted">
                   <li className="flex items-start gap-2.5">

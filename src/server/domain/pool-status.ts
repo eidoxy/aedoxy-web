@@ -1,6 +1,7 @@
-import { and, eq, isNotNull, min } from "drizzle-orm";
+import { and, eq, min } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { creditPool, plans } from "@/server/db/schema";
+import { planIsSynced } from "./plan-sellable";
 
 export type PoolStatus = "available" | "low" | "empty";
 
@@ -21,7 +22,7 @@ export async function getPoolStatus(): Promise<PoolStatus> {
   const [{ smallest }] = await db
     .select({ smallest: min(plans.creditQuota) })
     .from(plans)
-    .where(and(eq(plans.enabled, true), isNotNull(plans.newapiPlanId)));
+    .where(and(eq(plans.enabled, true), planIsSynced));
   return classifyPool({
     available: row.totalQuota - row.reservedQuota - row.soldQuota,
     smallestPlanQuota: smallest === null ? null : Number(smallest),
