@@ -1,0 +1,83 @@
+# Deploy produksi
+
+Satu stack Docker Compose di VPS (`~/aedoxy-web`): Postgres, Redis, gateway-aedoxy, web, worker, dan `cloudflared`. Tidak ada port yang dipublikasikan ke host. Semua lalu lintas masuk lewat Cloudflare Tunnel.
+
+## Penamaan
+
+- Kunci service gateway di compose tetap `new-api`. Kunci ini sengaja dipertahankan karena `gateway-aedoxy/.github/workflows/deploy.yml` menjalankan `docker compose pull new-api`, dan repo gateway melindungi nama tersebut. Kalau pemilik ingin mengganti kunci service, ia harus mengubah `deploy.yml` gateway sendiri.
+- Container, alias jaringan, dan host internal bernama `gateway-aedoxy` (`NEWAPI_INTERNAL_URL=http://gateway-aedoxy:3000`).
+- Database gateway: `gateway-aedoxy` (pakai tanda kutip ganda di SQL). Database web: `aedoxy`, dimiliki role `aedoxy` (bukan superuser).
+
+## Cloudflare Tunnel
+
+Ingress diatur di dashboard Cloudflare (Zero Trust > Networks > Tunnels), bukan di berkas ini:
+
+| Hostname | Service |
+|---|---|
+| `aedoxy.com` | `http://web:3000` |
+| `ai.aedoxy.com` | `http://gateway-aedoxy:3000` |
+
+Token tunnel masuk ke `CLOUDFLARE_TUNNEL_TOKEN`. Tidak ada Caddy. Endpoint bridge `/api/aedoxy` pada gateway tidak boleh diekspos publik: tambahkan aturan WAF/Access di Cloudflare untuk path itu, karena Caddyfile lama yang memblokirnya tidak dipakai lagi. `TRUSTED_PROXIES` dikunci ke subnet jaringan compose (`172.28.0.0/16`).
+
+## Deploy pertama
+
+```sh
+mkdir -p ~/aedoxy-web/postgres-init && cd ~/aedoxy-web
+# salin dari repo: docker-compose.prod.yml -> docker-compose.yml, .env.example -> .env, postgres-init/10-aedoxy.sh
+cp .env.example .env && chmod 600 .env   # isi semua nilai kosong (openssl rand -hex 24)
+sudo docker login ghcr.io                # token dengan scope read:packages bila image privat
+
+sudo docker compose up -d postgres redis        # init membuat role dan database aedoxy
+sudo docker compose run --rm migrate            # migrasi web
+sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # mencetak CONSOLE_OIDC_CLIENT_SECRET sekali
+```
+
+Salin rahasia yang tercetak ke `.env` (`CONSOLE_OIDC_CLIENT_SECRET`) dan ke pengaturan OAuth di konsol gateway. Redirect URI: `https://ai.aedoxy.com/oauth/aedoxy`. Lalu:
+
+```sh
+sudo docker compose run --rm migrate node scripts/seed-catalog.js     # opsional: SEED_POOL_USD=500 untuk saldo pool awal
+sudo docker compose up -d
+sudo docker compose run --rm migrate node scripts/make-admin.js you@example.com
+```
+
+Skrip init Postgres hanya jalan pada volume baru. Untuk volume yang sudah ada, jalankan manual:
+
+```sh
+sudo docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+# di psql:
+#   CREATE ROLE aedoxy LOGIN NOSUPERUSER PASSWORD '<AEDOXY_DB_PASSWORD>';
+#   CREATE DATABASE aedoxy OWNER aedoxy;
+# bila database gateway masih bernama lama: ALTER DATABASE "new-api" RENAME TO "gateway-aedoxy";  (putuskan semua koneksi dulu)
+```
+
+Image Postgres dipatok ke `postgres:15` agar cocok dengan volume `pg_data` instalasi gateway yang sudah ada. Redis dibatasi `maxmemory 96mb` dengan eviction LRU supaya muat di `mem_limit` 128m.
+
+## Perintah operator
+
+```sh
+cd ~/aedoxy-web
+sudo docker compose ps
+sudo docker compose logs -f --tail=100 web worker
+sudo docker compose run --rm migrate node scripts/make-admin.js <email>
+sudo docker compose run --rm migrate node scripts/reset-2fa.js <email>
+sudo docker compose run --rm migrate node scripts/seed-catalog.js
+sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # NODE_ENV=production: rahasia baru dicetak ke stdout
+```
+
+`SEED_OAUTH_OUT=<path>` menulis rahasia ke berkas, `SEED_OAUTH_OUT=-` memaksa stdout. Rahasia hanya muncul sekali saat klien dibuat (tersimpan sebagai hash).
+
+## CI/CD dan rollback
+
+Workflow `.github/workflows/deploy.yml` berjalan pada push ke `main`: tes, build dan push image ke GHCR (`:<sha>` dan `:latest`), lalu SSH ke VPS: `pull`, `migrate`, `up -d --no-deps web worker`. Deploy berhenti bila migrasi gagal.
+
+Secret (Settings > Secrets, environment `production`): `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_PORT`.
+Variable (Settings > Variables): `NEXT_PUBLIC_SITE_URL` (mis. `https://aedoxy.com`), `NEWAPI_PUBLIC_URL` (mis. `https://ai.aedoxy.com`). Keduanya tertanam saat build, jadi mengubahnya butuh build ulang.
+
+Rollback ke versi sebelumnya (tag = SHA commit):
+
+```sh
+cd ~/aedoxy-web
+sudo env WEB_TAG=<sha-lama> docker compose up -d --no-deps web worker
+```
+
+Migrasi tidak dibalik otomatis. Migrasi yang sudah berlaku harus kompatibel dengan versi lama, atau pulihkan dari backup (`pg_dump`) sebelum rollback. Tanpa `WEB_TAG`, `up -d` memakai `:latest`; isi `WEB_TAG` di `.env` bila ingin mengunci versi.

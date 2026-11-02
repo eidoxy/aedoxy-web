@@ -1,0 +1,189 @@
+# Production stack: gateway-aedoxy (New API fork) + aedoxy-web, behind a Cloudflare Tunnel.
+# On the VPS this file lives at ~/aedoxy-web/docker-compose.yml next to .env (see README.md).
+# No ports are published: all traffic enters through the `cloudflared` service.
+name: aedoxy-web
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-web-env: &web-env
+  NODE_ENV: production
+  ENV_STRICT: "true"
+  DATABASE_URL: postgres://aedoxy:${AEDOXY_DB_PASSWORD:?set AEDOXY_DB_PASSWORD}@postgres:5432/aedoxy
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET (32+ chars)}
+  BETTER_AUTH_URL: https://aedoxy.com
+  NEXT_PUBLIC_SITE_URL: https://aedoxy.com
+  NEWAPI_PUBLIC_URL: https://ai.aedoxy.com
+  NEWAPI_INTERNAL_URL: http://gateway-aedoxy:3000
+  NEWAPI_BRIDGE_TOKEN: ${NEWAPI_BRIDGE_TOKEN:?set NEWAPI_BRIDGE_TOKEN}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set GOOGLE_CLIENT_SECRET}
+  CONSOLE_OIDC_CLIENT_ID: ${CONSOLE_OIDC_CLIENT_ID:-aedoxy-console}
+  CONSOLE_OIDC_CLIENT_SECRET: ${CONSOLE_OIDC_CLIENT_SECRET:?set CONSOLE_OIDC_CLIENT_SECRET (printed once by seed-oauth-client, see README)}
+  EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
+  EMAIL_SERVER_URL: ${EMAIL_SERVER_URL:?set EMAIL_SERVER_URL}
+  POKETO_SECRET_KEY: ${POKETO_SECRET_KEY:?set POKETO_SECRET_KEY}
+  POKETO_WEBHOOK_SECRET: ${POKETO_WEBHOOK_SECRET:?set POKETO_WEBHOOK_SECRET}
+  ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    mem_limit: 768m
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: gateway-aedoxy
+      AEDOXY_DB_PASSWORD: ${AEDOXY_DB_PASSWORD:?set AEDOXY_DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks: [aedoxy]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory 96mb --maxmemory-policy allkeys-lru"]
+    networks: [aedoxy]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Service key stays `new-api`: gateway-aedoxy/.github/workflows/deploy.yml runs `docker compose pull new-api`.
+  new-api:
+    image: ghcr.io/eidoxy/gateway-aedoxy:latest
+    container_name: gateway-aedoxy
+    restart: unless-stopped
+    mem_limit: 768m
+    logging: *logging
+    command: --log-dir /app/logs
+    environment:
+      SQL_DSN: postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/gateway-aedoxy
+      REDIS_CONN_STRING: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_TRUSTED_URL: https://ai.aedoxy.com
+      TRUSTED_PROXIES: 172.28.0.0/16
+      TZ: Asia/Jakarta
+      ERROR_LOG_ENABLED: "true"
+      BATCH_UPDATE_ENABLED: "true"
+      NODE_NAME: gateway-aedoxy-node-1
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      aedoxy:
+        aliases: [gateway-aedoxy]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: ghcr.io/eidoxy/aedoxy-web:${WEB_TAG:-latest}
+    container_name: aedoxy-web
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *logging
+    environment:
+      <<: *web-env
+      NODE_OPTIONS: --max-old-space-size=384
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [aedoxy]
+    # healthcheck comes from the image (node fetch against /)
+
+  worker:
+    image: ghcr.io/eidoxy/aedoxy-web:${WEB_TAG:-latest}
+    container_name: aedoxy-worker
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging
+    command: ["node", "scripts/worker.js"]
+    environment:
+      <<: *web-env
+      NODE_OPTIONS: --max-old-space-size=192
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [aedoxy]
+    healthcheck:
+      disable: true # the image healthcheck probes the web port, which the worker does not serve
+
+  # One-off tasks, never started by `up`: `docker compose run --rm migrate` (see README for operator scripts).
+  # Looser env than web: the OIDC secret does not exist yet when seed-oauth-client creates it.
+  migrate:
+    image: ghcr.io/eidoxy/aedoxy-web:${WEB_TAG:-latest}
+    profiles: ["tools"]
+    restart: "no"
+    mem_limit: 256m
+    logging: *logging
+    command: ["node", "scripts/migrate.js"]
+    environment:
+      NODE_ENV: production
+      ENV_STRICT: "false"
+      DATABASE_URL: postgres://aedoxy:${AEDOXY_DB_PASSWORD:?set AEDOXY_DB_PASSWORD}@postgres:5432/aedoxy
+      NEWAPI_PUBLIC_URL: https://ai.aedoxy.com
+      NEWAPI_INTERNAL_URL: http://gateway-aedoxy:3000
+      NEWAPI_BRIDGE_TOKEN: ${NEWAPI_BRIDGE_TOKEN:-}
+      CONSOLE_OIDC_CLIENT_ID: ${CONSOLE_OIDC_CLIENT_ID:-aedoxy-console}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [aedoxy]
+    healthcheck:
+      disable: true
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      web:
+        condition: service_healthy
+      new-api:
+        condition: service_healthy
+    networks: [aedoxy]
+
+volumes:
+  pg_data:
+
+networks:
+  aedoxy:
+    name: aedoxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
