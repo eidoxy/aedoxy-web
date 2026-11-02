@@ -1,0 +1,116 @@
+name: Test, Build, Push to GHCR, and Auto-Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Never run two deploys at once; a newer push waits for the running one instead of cancelling it mid-deploy.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: aedoxy
+          POSTGRES_PASSWORD: aedoxy_dev
+          POSTGRES_DB: aedoxy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aedoxy -d aedoxy_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgres://aedoxy:aedoxy_dev@127.0.0.1:5432/aedoxy_test
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2 # keep in sync with package.json "packageManager"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Lint
+        run: bunx eslint src scripts
+
+      - name: Test
+        run: bun run test
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lowercase repository name
+        run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ env.REPO_LC }}:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LC }}:latest
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+            NEWAPI_PUBLIC_URL=${{ vars.NEWAPI_PUBLIC_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          script: |
+            set -e
+            cd ~/aedoxy-web
+            WEB_TAG=${{ github.sha }}
+            sudo env WEB_TAG="$WEB_TAG" docker compose pull web worker
+            sudo env WEB_TAG="$WEB_TAG" docker compose run --rm -T migrate
+            sudo env WEB_TAG="$WEB_TAG" docker compose up -d --no-deps web worker
+            sudo docker image prune -f
