@@ -3,6 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/server/auth";
 import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
@@ -73,8 +74,10 @@ export async function deletePasskeyAction(_prev: SecurityFormState, formData: Fo
 
 /**
  * Switches 2FA off so the admin can enrol again. Other sessions are signed out first (a credential change
- * must not leave older sessions alive). The current session is replaced by Better Auth and, with 2FA off,
- * the admin gate sends the admin back to /admin/security to enrol.
+ * must not leave older sessions alive). Better Auth replaces the current session (new cookie, old row deleted).
+ * The redirect is deliberate: a plain return makes Next re-render the page with the OLD cookie header, the
+ * session is gone, and the admin lands on /login and then /dashboard. A redirect from an action forwards the
+ * new cookie to the target render, so /admin/security shows the enrolment form.
  */
 export async function resetTwoFactorAction(_prev: SecurityFormState, formData: FormData): Promise<SecurityFormState> {
   const session = await requireAdmin();
@@ -83,8 +86,8 @@ export async function resetTwoFactorAction(_prev: SecurityFormState, formData: F
     await db.delete(sessionTable).where(and(eq(sessionTable.userId, session.user.id), ne(sessionTable.id, session.session.id)));
     await auth.api.disableTwoFactor({ headers: await headers(), body: { password } });
     await auditSecurity(await getAdminActor(session), "admin.2fa.reset");
-    return { ok: "2FA dinonaktifkan. Daftarkan ulang sekarang." };
   } catch (err) {
     return toActionError(err);
   }
+  redirect("/admin/security"); // outside try: redirect works by throwing
 }

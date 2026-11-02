@@ -78,7 +78,8 @@ describe("resetTwoFactorAction", () => {
     expect(await resetTwoFactorAction({}, form({ password: "wrong-password-1", totp: codes[0] }))).toMatchObject({ error: "Kata sandi salah." });
     expect((await db.select().from(user).where(eq(user.id, u.id)))[0].twoFactorEnabled).toBe(true);
 
-    expect(await resetTwoFactorAction({}, form({ password: TEST_PASSWORD, totp: codes[0] }))).toMatchObject({ ok: expect.any(String) });
+    // Redirects (the mock throws) to the enrolment form instead of returning, see the action comment.
+    await expect(resetTwoFactorAction({}, form({ password: TEST_PASSWORD, totp: codes[0] }))).rejects.toThrow("REDIRECT /admin/security");
 
     expect((await db.select().from(user).where(eq(user.id, u.id)))[0].twoFactorEnabled).toBe(false);
     expect(await db.select().from(twoFactor).where(eq(twoFactor.userId, u.id))).toHaveLength(0);

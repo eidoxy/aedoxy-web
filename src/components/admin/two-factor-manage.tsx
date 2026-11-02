@@ -1,8 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { useActionState } from "react";
 import { regenerateBackupCodesAction, resetTwoFactorAction, type SecurityFormState } from "@/app/(admin)/admin/security/actions";
 import { SectionCard } from "@/components/console/section-card";
 import { Button } from "@/components/ui/button";
@@ -46,13 +45,9 @@ export function BackupCodesCard() {
   );
 }
 
-/** Switches 2FA off, then the admin gate sends the admin through the normal enrolment again. */
+/** Switches 2FA off; the action then redirects to /admin/security, which shows the enrolment form. */
 export function ResetTwoFactorCard() {
-  const router = useRouter();
   const [state, action, pending] = useActionState<SecurityFormState, FormData>(resetTwoFactorAction, {});
-  useEffect(() => {
-    if (state.ok) router.refresh();
-  }, [state.ok, router]);
   return (
     <SectionCard
       title="Atur ulang 2FA"
@@ -61,7 +56,7 @@ export function ResetTwoFactorCard() {
       <form action={action} className="max-w-sm space-y-4">
         <PasswordField id="password-reset" />
         <TotpField id="totp-reset" />
-        <FormResult error={state.error} ok={state.ok} />
+        <FormResult error={state.error} />
         <Button type="submit" variant="destructive" disabled={pending} className="h-10 px-4 text-sm font-semibold">
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
           Nonaktifkan dan daftar ulang 2FA
