@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { adminDate, Card, PageHeader } from "@/components/admin/common";
+import { adminDate, Card } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
 import { RetryFulfillmentForm } from "@/components/admin/retry-fulfillment-form";
 import { OrderBadge } from "@/components/panel/order-badge";
 import { formatIdr, formatUsd, QUOTA_PER_USD } from "@/lib/format";
@@ -37,12 +38,10 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const { order, fulfillment: f, grant } = data;
 
   return (
-    <div>
-      <PageHeader eyebrow="Order" title={order.tradeNo}>
-        <OrderBadge status={order.status} fulfillment={f?.status ?? null} />
-      </PageHeader>
+    <div className="space-y-6">
+      <PageHeader eyebrow="Order" title={order.tradeNo} actions={<OrderBadge status={order.status} fulfillment={f?.status ?? null} />} />
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <h2 className="mb-2 text-lg font-medium text-heading">Order</h2>
           <dl>

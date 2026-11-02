@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PageHeader, Stat } from "@/components/admin/common";
+import { Stat } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
 import { formatUsd, QUOTA_PER_USD } from "@/lib/format";
 import { requireAdmin } from "@/server/admin";
 import { getAdminOverview } from "@/server/domain/admin-overview";
@@ -24,9 +25,9 @@ async function Overview() {
   const inv = o.invariant;
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Ringkasan" />
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-6">
+      <PageHeader eyebrow="Admin" title="Ringkasan" description="Kondisi pool, order, dan fulfillment dalam sekali lihat." />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Stat label="Pool tersedia" value={o.pool ? usd(o.pool.available) : "-"} hint={o.pool ? `Terjual ${usd(o.pool.sold)} · direservasi ${usd(o.pool.reserved)}` : "Pool belum dibuat (jalankan db:seed-catalog)"} tone={o.pool && o.pool.available < 0 ? "danger" : undefined} />
         <Stat label="Pool total" value={o.pool ? usd(o.pool.total) : "-"} hint={<Link href="/admin/pool" className="text-primary-ink underline-offset-4 hover:underline">Kelola stok</Link>} />
         <Stat

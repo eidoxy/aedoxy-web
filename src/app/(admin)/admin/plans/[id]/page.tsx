@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { PageHeader, Stat } from "@/components/admin/common";
+import { Stat } from "@/components/admin/common";
 import { PlanForm } from "@/components/admin/plan-form";
+import { PageHeader } from "@/components/console/page-header";
 import { formatIdr } from "@/lib/format";
 import { planToFormValues } from "@/lib/schemas/plan";
 import { requireAdmin } from "@/server/admin";
@@ -26,16 +27,14 @@ async function EditPlan({ params }: { params: Promise<{ id: string }> }) {
   if (!plan) notFound();
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader eyebrow="Paket" title={plan.name} />
-      <div className="mt-6 grid max-w-3xl gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Terjual (lunas)" value={plan.paidCount} />
         <Stat label="Pendapatan" value={formatIdr(plan.revenueIdr)} />
         <Stat label="Sinkron" value={plan.synced ? "Ya" : "Belum"} tone={plan.synced ? "success" : "danger"} hint={plan.newapiPlanId ? `ID New API ${plan.newapiPlanId}` : "Belum ada di New API"} />
       </div>
-      <div className="mt-8 max-w-3xl">
-        <PlanForm planId={plan.id} values={planToFormValues(plan)} enabled={plan.enabled} sold={plan.paidCount > 0} />
-      </div>
+      <PlanForm planId={plan.id} values={planToFormValues(plan)} enabled={plan.enabled} sold={plan.paidCount > 0} />
     </div>
   );
 }

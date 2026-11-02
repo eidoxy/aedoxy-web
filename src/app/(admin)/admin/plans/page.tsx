@@ -2,8 +2,9 @@ import { ArrowDown, ArrowUp, Copy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PageHeader } from "@/components/admin/common";
 import { EnabledDialog, PriceDialog } from "@/components/admin/plan-dialogs";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,17 +32,19 @@ async function Plans() {
   const rows = await listAdminPlans();
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Paket">
-        <Button asChild className="h-10 px-4 text-sm font-semibold">
-          <Link href="/admin/plans/new">Buat paket</Link>
-        </Button>
-      </PageHeader>
-      <p className="mt-3 max-w-2xl text-sm text-fg-muted">
-        Paket tidak dihapus, hanya dinonaktifkan. Paket yang belum tersinkron ke New API tidak bisa dibeli. Klik harga untuk mengubahnya.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="Paket"
+        description="Paket tidak dihapus, hanya dinonaktifkan. Paket yang belum tersinkron ke New API tidak bisa dibeli. Klik harga untuk mengubahnya."
+        actions={
+          <Button asChild className="h-10 px-4 text-sm font-semibold">
+            <Link href="/admin/plans/new">Buat paket</Link>
+          </Button>
+        }
+      />
 
-      <div className="mt-8 rounded-[18px] border border-line bg-surface p-2">
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -130,8 +133,8 @@ async function Plans() {
             ))}
           </TableBody>
         </Table>
-      </div>
-      <p className="mt-3 text-xs text-faint">&ldquo;Terjual&rdquo; = order lunas (dan stok paket bila ada). Pendapatan = jumlah order lunas, tanpa memperhitungkan refund.</p>
+      </TableCard>
+      <p className="text-xs text-faint">&ldquo;Terjual&rdquo; = order lunas (dan stok paket bila ada). Pendapatan = jumlah order lunas, tanpa memperhitungkan refund.</p>
     </div>
   );
 }

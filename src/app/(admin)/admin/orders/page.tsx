@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { adminDate, Field, NativeSelect, PageHeader, PAGE_SIZE, Pagination, pageParam, param, type SearchParams } from "@/components/admin/common";
+import { adminDate, Card, Field, NativeSelect, PAGE_SIZE, Pagination, pageParam, param, type SearchParams } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { OrderBadge } from "@/components/panel/order-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,9 +31,10 @@ async function Orders({ searchParams }: { searchParams: SearchParams }) {
   const { rows, total } = await listAdminOrders(filter, page, PAGE_SIZE);
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Order" />
-      <form method="get" className="mt-6 grid items-end gap-3 sm:grid-cols-[1fr_1fr_2fr_auto]">
+    <div className="space-y-6">
+      <PageHeader eyebrow="Admin" title="Order" description="Semua order pembeli. Klik trade no untuk melihat invoice, fulfillment, dan grant." />
+      <Card>
+      <form method="get" className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_2fr_auto]">
         <Field label="Status order" htmlFor="status">
           <NativeSelect id="status" name="status" defaultValue={filter.status ?? ""}>
             <option value="">Semua</option>
@@ -59,8 +62,9 @@ async function Orders({ searchParams }: { searchParams: SearchParams }) {
           Terapkan
         </Button>
       </form>
+      </Card>
 
-      <div className="mt-4 rounded-[18px] border border-line bg-surface p-2">
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -109,7 +113,7 @@ async function Orders({ searchParams }: { searchParams: SearchParams }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </TableCard>
       <Pagination basePath="/admin/orders" params={filter} page={page} total={total} />
     </div>
   );

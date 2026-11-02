@@ -7,16 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { AdminFormState } from "@/server/admin-action";
-import { Card, Field, NativeSelect } from "./common";
+import { SectionCard } from "@/components/console/section-card";
+import { Field, NativeSelect } from "./common";
 import { FormResult, TotpField } from "./totp-field";
 
 export function AdjustPoolForm() {
   const [state, action, pending] = useActionState<AdminFormState, FormData>(adjustPoolAction, {});
   const fe = state.fieldErrors ?? {};
   return (
-    <Card>
-      <h2 className="text-lg font-medium text-heading">Tambah / kurangi stok</h2>
-      <form action={action} className="mt-4 space-y-4">
+    <SectionCard title="Tambah / kurangi stok" description="Setiap perubahan tercatat di ledger dan audit log, dan meminta kode 2FA.">
+      <form action={action} className="max-w-xl space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Aksi" htmlFor="direction">
             <NativeSelect id="direction" name="direction" defaultValue="add">
@@ -38,17 +38,18 @@ export function AdjustPoolForm() {
           Simpan perubahan stok
         </Button>
       </form>
-    </Card>
+    </SectionCard>
   );
 }
 
 export function ThresholdForm({ currentUsd }: { currentUsd: number }) {
   const [state, action, pending] = useActionState<AdminFormState, FormData>(setThresholdAction, {});
   return (
-    <Card>
-      <h2 className="text-lg font-medium text-heading">Ambang stok hampir habis</h2>
-      <p className="mt-1 text-sm text-fg-muted">Di bawah ambang ini, pembeli melihat status &ldquo;stok menipis&rdquo;. Isi 0 untuk memakai bawaan ($50).</p>
-      <form action={action} className="mt-4 space-y-4">
+    <SectionCard
+      title="Ambang stok hampir habis"
+      description="Di bawah ambang ini, pembeli melihat status “stok menipis”. Isi 0 untuk memakai bawaan ($50)."
+    >
+      <form action={action} className="max-w-xl space-y-4">
         <Field label="Ambang (USD)" htmlFor="thresholdUsd" error={state.fieldErrors?.thresholdUsd?.[0]}>
           <Input id="thresholdUsd" name="thresholdUsd" inputMode="decimal" defaultValue={String(currentUsd)} required className="h-9 bg-background" />
         </Field>
@@ -59,6 +60,6 @@ export function ThresholdForm({ currentUsd }: { currentUsd: number }) {
           Simpan ambang
         </Button>
       </form>
-    </Card>
+    </SectionCard>
   );
 }

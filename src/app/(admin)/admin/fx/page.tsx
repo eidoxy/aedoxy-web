@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { adminDate, Card, PageHeader, Stat } from "@/components/admin/common";
+import { adminDate, Card, Stat } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
 import { FxSettingsForm, RefreshFxButton } from "@/components/admin/fx-forms";
 import { Sparkline } from "@/components/admin/sparkline";
 import { formatIdr } from "@/lib/format";
@@ -23,12 +24,15 @@ async function Fx() {
   const { settings, display } = s;
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Kurs USD ke IDR">
-        <RefreshFxButton />
-      </PageHeader>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="Kurs USD ke IDR"
+        description="Kurs yang dipakai untuk perkiraan rupiah di halaman harga."
+        actions={<RefreshFxButton />}
+      />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Stat
           label="Kurs terpakai"
           value={display ? formatIdr(display.rate) : "-"}
@@ -45,7 +49,7 @@ async function Fx() {
         />
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FxSettingsForm
           initial={{
             mode: settings.mode,

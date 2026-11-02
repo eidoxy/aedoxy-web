@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { adminDate, Field, PageHeader, PAGE_SIZE, Pagination, pageParam, param, type SearchParams } from "@/components/admin/common";
+import { adminDate, Card, Field, PAGE_SIZE, Pagination, pageParam, param, type SearchParams } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -36,9 +38,10 @@ async function Audit({ searchParams }: { searchParams: SearchParams }) {
   const { rows, total } = await listAudit(filter, page, PAGE_SIZE);
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Audit" />
-      <form method="get" className="mt-6 grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+    <div className="space-y-6">
+      <PageHeader eyebrow="Admin" title="Audit" description="Catatan aksi admin: siapa mengubah apa, nilai sebelum dan sesudahnya." />
+      <Card>
+      <form method="get" className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <Field label="Aksi (awalan)" htmlFor="action" hint="Contoh: plan, pool.adjust, fulfillment.">
           <Input id="action" name="action" defaultValue={filter.action ?? ""} maxLength={60} className="h-9 bg-background" />
         </Field>
@@ -49,8 +52,9 @@ async function Audit({ searchParams }: { searchParams: SearchParams }) {
           Terapkan
         </Button>
       </form>
+      </Card>
 
-      <div className="mt-2 rounded-[18px] border border-line bg-surface p-2">
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -88,7 +92,7 @@ async function Audit({ searchParams }: { searchParams: SearchParams }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </TableCard>
       <Pagination basePath="/admin/audit" params={filter} page={page} total={total} />
     </div>
   );

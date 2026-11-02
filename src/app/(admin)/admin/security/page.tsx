@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Card, PageHeader } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
+import { SectionCard } from "@/components/console/section-card";
 import { TwoFactorSetup } from "@/components/admin/two-factor-setup";
 import { requireAdmin } from "@/server/admin";
 
@@ -20,24 +21,20 @@ async function Security() {
   const enabled = session.user.twoFactorEnabled === true;
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader eyebrow="Admin" title="Keamanan" />
-      <Card className="mt-8 max-w-2xl">
-        {enabled ? (
-          <>
-            <h2 className="text-lg font-medium text-heading">Autentikasi dua faktor aktif</h2>
-            <p className="mt-2 text-sm text-fg-muted">
-              Aksi sensitif (ubah pool, ubah paket, coba lagi fulfillment) meminta kode 6 digit dari aplikasi autentikator Anda, atau salah satu kode cadangan.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-lg font-medium text-heading">Aktifkan autentikasi dua faktor</h2>
-            <p className="mt-2 mb-6 text-sm text-fg-muted">Halaman admin lain terkunci sampai 2FA aktif.</p>
-            <TwoFactorSetup />
-          </>
-        )}
-      </Card>
+      {enabled ? (
+        <SectionCard
+          title="Autentikasi dua faktor aktif"
+          description="Aksi sensitif (ubah pool, ubah paket, coba lagi fulfillment) meminta kode 6 digit dari aplikasi autentikator Anda, atau salah satu kode cadangan."
+        >
+          <p className="text-sm text-success">2FA aktif untuk akun ini.</p>
+        </SectionCard>
+      ) : (
+        <SectionCard title="Aktifkan autentikasi dua faktor" description="Halaman admin lain terkunci sampai 2FA aktif.">
+          <TwoFactorSetup />
+        </SectionCard>
+      )}
     </div>
   );
 }

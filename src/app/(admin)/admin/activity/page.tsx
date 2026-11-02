@@ -2,7 +2,9 @@ import { asc } from "drizzle-orm";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ActivitySettingsForm, HideItemForm } from "@/components/admin/activity-forms";
-import { adminDate, Card, PageHeader } from "@/components/admin/common";
+import { adminDate } from "@/components/admin/common";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/server/admin";
 import { db } from "@/server/db/client";
@@ -27,24 +29,24 @@ async function Activity() {
   ]);
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Feed aktivitas" />
-      <p className="mt-3 max-w-2xl text-sm text-fg-muted">
-        Hanya pembelian paket yang berhasil diaktifkan, satu item per pengguna, 7 hari terakhir. Pengguna yang menonaktifkan aktivitasnya tidak ikut.
-        Feed disembunyikan sepenuhnya bila item kurang dari 3.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="Feed aktivitas"
+        description="Hanya pembelian paket yang berhasil diaktifkan, satu item per pengguna, 7 hari terakhir. Pengguna yang menonaktifkan aktivitasnya tidak ikut. Feed disembunyikan sepenuhnya bila item kurang dari 3."
+      />
 
-      <div className="mt-8">
-        <ActivitySettingsForm enabled={settings.enabled} plans={planRows} allowedIds={settings.planIds} />
+      <ActivitySettingsForm enabled={settings.enabled} plans={planRows} allowedIds={settings.planIds} />
+
+      <div>
+        <h2 className="text-xl font-medium tracking-[-0.02em] text-heading">Item aktif</h2>
+        {!settings.enabled ? (
+          <p className="mt-2 text-sm text-warn">Feed dimatikan, pengunjung tidak melihat item apa pun.</p>
+        ) : !feedVisible ? (
+          <p className="mt-2 text-sm text-warn">Item kurang dari 3, feed tidak tampil di situs.</p>
+        ) : null}
       </div>
-
-      <h2 className="mt-10 text-xl font-medium tracking-[-0.02em] text-heading">Item aktif</h2>
-      {!settings.enabled ? (
-        <p className="mt-2 text-sm text-warn">Feed dimatikan, pengunjung tidak melihat item apa pun.</p>
-      ) : !feedVisible ? (
-        <p className="mt-2 text-sm text-warn">Item kurang dari 3, feed tidak tampil di situs.</p>
-      ) : null}
-      <Card className="mt-4 p-2">
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -74,8 +76,8 @@ async function Activity() {
             ))}
           </TableBody>
         </Table>
-      </Card>
-      <p className="mt-3 text-xs text-faint">{settings.hiddenOrderIds.length} item disembunyikan. Perubahan tampil di situs dalam sekitar 30 detik.</p>
+      </TableCard>
+      <p className="text-xs text-faint">{settings.hiddenOrderIds.length} item disembunyikan. Perubahan tampil di situs dalam sekitar 30 detik.</p>
     </div>
   );
 }

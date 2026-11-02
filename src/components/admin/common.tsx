@@ -1,23 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card as UiCard } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const adminDate = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" });
 
-export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p className="eyebrow">{eyebrow}</p>
-        <h1 className="mt-3 text-3xl font-medium tracking-[-0.04em] text-heading sm:text-4xl">{title}</h1>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-export function Card({ className, ...props }: React.ComponentProps<"section">) {
-  return <section className={cn("rounded-[18px] border border-line bg-surface p-5 shadow-[0_1px_3px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.02)]", className)} {...props} />;
+/** Plain block with the card chrome: children bring their own spacing. For tables use TableCard. */
+export function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return <UiCard className={cn("gap-0 px-5", className)} {...props} />;
 }
 
 export function Stat({ label, value, hint, tone }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: "danger" | "success" | "warn" }) {

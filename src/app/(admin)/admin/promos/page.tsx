@@ -1,8 +1,10 @@
 import { asc } from "drizzle-orm";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { adminDate, PageHeader } from "@/components/admin/common";
+import { adminDate } from "@/components/admin/common";
 import { PromoForm, StopPromoForm } from "@/components/admin/promo-forms";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatIdr } from "@/lib/format";
@@ -33,13 +35,14 @@ async function Promos() {
   const planName = new Map(planRows.map((p) => [p.id, p.name]));
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Promo dan diskon" />
-      <p className="mt-3 max-w-2xl text-sm text-fg-muted">
-        Satu diskon per order: yang paling menguntungkan pembeli. Potongan dihitung dari harga flat, bukan harga coret. Harga akhir dibulatkan ke atas per Rp100 dan tidak kurang dari Rp10.000.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="Promo dan diskon"
+        description="Satu diskon per order: yang paling menguntungkan pembeli. Potongan dihitung dari harga flat, bukan harga coret. Harga akhir dibulatkan ke atas per Rp100 dan tidak kurang dari Rp10.000."
+      />
 
-      <div className="mt-8 rounded-[18px] border border-line bg-surface p-2">
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -89,9 +92,9 @@ async function Promos() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </TableCard>
 
-      <h2 className="mt-10 mb-4 text-xl font-medium tracking-[-0.02em] text-heading">Buat promo</h2>
+      <h2 className="pt-4 text-xl font-medium tracking-[-0.02em] text-heading">Buat promo</h2>
       <PromoForm plans={planRows} />
     </div>
   );

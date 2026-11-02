@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { adminDate, Card, Field, NativeSelect, PageHeader, PAGE_SIZE, Pagination, pageParam, param, Stat, type SearchParams } from "@/components/admin/common";
+import { adminDate, Card, Field, NativeSelect, PAGE_SIZE, Pagination, pageParam, param, Stat, type SearchParams } from "@/components/admin/common";
 import { AdjustPoolForm, ThresholdForm } from "@/components/admin/pool-forms";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UsdIdr } from "@/components/usd-idr";
@@ -36,16 +38,27 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
   const exportQuery = new URLSearchParams(Object.entries(filter).filter((e): e is [string, string] => Boolean(e[1]))).toString();
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Pool kredit" />
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="Pool kredit"
+        description="Stok kredit yang dijual ke pembeli. Perubahan stok dicatat di ledger di bawah."
+        actions={
+          <Button asChild variant="outline" className="h-9 px-4 text-sm font-semibold">
+            <a href={`/admin/pool/export${exportQuery ? `?${exportQuery}` : ""}`} download>
+              Ekspor CSV
+            </a>
+          </Button>
+        }
+      />
 
       {!overview ? (
-        <Card className="mt-8">
+        <Card>
           <p className="text-sm text-fg-muted">Pool belum dibuat. Jalankan <code className="font-mono">bun run db:seed-catalog</code> sekali, lalu muat ulang halaman ini.</p>
         </Card>
       ) : (
         <>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Stat label="Tersedia" value={usd(overview.available)} hint={<>{both(overview.available)} <UsdIdr quota={overview.available} fx={fx} /></>} tone={overview.available < 0 ? "danger" : undefined} />
             <Stat label="Total" value={usd(overview.total)} hint={<>{both(overview.total)} <UsdIdr quota={overview.total} fx={fx} /></>} />
             <Stat label="Terjual" value={usd(overview.sold)} hint={both(overview.sold)} />
@@ -59,16 +72,14 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
             />
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <AdjustPoolForm />
-            <ThresholdForm currentUsd={overview.lowThreshold / QUOTA_PER_USD} />
-          </div>
-          <p className="mt-2 text-xs text-faint">Ambang yang berlaku sekarang: {usd(overview.lowThreshold > 0 ? overview.lowThreshold : DEFAULT_LOW_THRESHOLD_QUOTA)}.</p>
+          <AdjustPoolForm />
+          <ThresholdForm currentUsd={overview.lowThreshold / QUOTA_PER_USD} />
+          <p className="text-xs text-faint">Ambang yang berlaku sekarang: {usd(overview.lowThreshold > 0 ? overview.lowThreshold : DEFAULT_LOW_THRESHOLD_QUOTA)}.</p>
         </>
       )}
 
-      <h2 className="mt-10 text-xl font-medium tracking-[-0.02em] text-heading">Ledger</h2>
-      <form method="get" className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+      <h2 className="pt-4 text-xl font-medium tracking-[-0.02em] text-heading">Ledger</h2>
+      <form method="get" className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
         <Field label="Tipe" htmlFor="type">
           <NativeSelect id="type" name="type" defaultValue={filter.type ?? ""}>
             <option value="">Semua</option>
@@ -89,15 +100,10 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
           <Button type="submit" className="h-9 px-4 text-sm font-semibold">
             Terapkan
           </Button>
-          <Button asChild variant="outline" className="h-9 px-4 text-sm font-semibold">
-            <a href={`/admin/pool/export${exportQuery ? `?${exportQuery}` : ""}`} download>
-              Ekspor CSV
-            </a>
-          </Button>
         </div>
       </form>
 
-      <div className="mt-4 rounded-[18px] border border-line bg-surface p-2">
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -132,7 +138,7 @@ async function Pool({ searchParams }: { searchParams: SearchParams }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </TableCard>
       <Pagination basePath="/admin/pool" params={filter} page={page} total={ledger.total} />
     </div>
   );

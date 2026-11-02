@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Card, PageHeader, param, type SearchParams } from "@/components/admin/common";
+import { param, type SearchParams } from "@/components/admin/common";
 import { ModelMetaForm } from "@/components/admin/model-meta-form";
+import { PageHeader } from "@/components/console/page-header";
+import { TableCard } from "@/components/console/table-card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatTokens } from "@/lib/format";
@@ -32,21 +34,24 @@ async function ModelsAdmin({ searchParams }: { searchParams: SearchParams }) {
   const missing = catalog.models.filter((m) => !known.has(m.id));
 
   return (
-    <div>
-      <PageHeader eyebrow="Admin" title="Metadata model" />
-      <p className="mt-3 max-w-2xl text-sm text-fg-muted">
-        Daftar dan biaya kredit model datang dari New API. Di sini Anda mengisi yang tidak disimpan New API: provider, context, kemampuan, dan harga resmi.
-        {catalog.state !== "ok" && " Daftar model dari New API belum bisa dimuat sekarang."}
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Admin"
+        title="Metadata model"
+        description={
+          <>
+            Daftar dan biaya kredit model datang dari New API. Di sini Anda mengisi yang tidak disimpan New API: provider, context, kemampuan, dan harga resmi.
+            {catalog.state !== "ok" && " Daftar model dari New API belum bisa dimuat sekarang."}
+          </>
+        }
+      />
 
-      <h2 className="mt-8 text-xl font-medium tracking-[-0.02em] text-heading">{editing ? `Ubah ${editing.modelName}` : "Tambah / ubah metadata"}</h2>
-      <div className="mt-4">
-        <ModelMetaForm key={defaults.modelName} defaults={defaults} />
-      </div>
+      <h2 className="text-xl font-medium tracking-[-0.02em] text-heading">{editing ? `Ubah ${editing.modelName}` : "Tambah / ubah metadata"}</h2>
+      <ModelMetaForm key={defaults.modelName} defaults={defaults} />
 
       {missing.length > 0 && (
-        <>
-          <h2 className="mt-10 text-xl font-medium tracking-[-0.02em] text-heading">Model tanpa metadata</h2>
+        <div>
+          <h2 className="text-xl font-medium tracking-[-0.02em] text-heading">Model tanpa metadata</h2>
           <p className="mt-1 text-sm text-fg-muted">Tampil di /models dengan context dan kemampuan kosong sampai diisi.</p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {missing.map((m) => (
@@ -57,11 +62,11 @@ async function ModelsAdmin({ searchParams }: { searchParams: SearchParams }) {
               </li>
             ))}
           </ul>
-        </>
+        </div>
       )}
 
-      <h2 className="mt-10 text-xl font-medium tracking-[-0.02em] text-heading">Metadata tersimpan</h2>
-      <Card className="mt-4 p-2">
+      <h2 className="pt-4 text-xl font-medium tracking-[-0.02em] text-heading">Metadata tersimpan</h2>
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -103,7 +108,7 @@ async function ModelsAdmin({ searchParams }: { searchParams: SearchParams }) {
             ))}
           </TableBody>
         </Table>
-      </Card>
+      </TableCard>
     </div>
   );
 }
