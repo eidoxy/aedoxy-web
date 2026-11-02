@@ -10,10 +10,12 @@ import { ensureConsoleAccountForUser } from "@/server/account";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
+import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyPlugins } from "@/server/passkey-policy";
 import { sessionOptions } from "@/server/session-config";
 import { sessionTrust } from "@/server/session-trust-plugin";
 
 const isProd = env.NODE_ENV === "production";
+const baseURL = env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_SITE_URL;
 
 /** Best effort: a failed bridge call must never fail sign-up or verification. "Buka Console" retries it. */
 async function linkConsoleAccount(userId: string) {
@@ -32,7 +34,7 @@ function mail(to: string, subject: string, text: string) {
 }
 
 export const auth = betterAuth({
-  baseURL: env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_SITE_URL,
+  baseURL,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: [env.NEXT_PUBLIC_SITE_URL, env.NEWAPI_PUBLIC_URL],
   database: drizzleAdapter(db, { provider: "pg", schema }),
@@ -40,7 +42,8 @@ export const auth = betterAuth({
   // oauthProvider replaces the jwt plugin's /token endpoint (see the plugin docs).
   // The three /two-factor paths only need the password over HTTP; the admin security actions call the same
   // handlers through auth.api after also checking a fresh 2FA code, so the HTTP routes are closed (auth.api is unaffected).
-  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri"],
+  // Same for deleting or renaming a passkey: the admin security actions do it and write the audit row.
+  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", ...PASSKEY_PATHS_CLOSED_OVER_HTTP],
 
   user: {
     additionalFields: {
@@ -111,6 +114,7 @@ export const auth = betterAuth({
       scopes: ["openid", "profile", "email"],
     }),
     twoFactor({ issuer: "Aedoxy" }),
+    ...passkeyPlugins(baseURL),
     admin({ defaultRole: "user", adminRoles: ["admin"] }),
     sessionTrust(),
     nextCookies(), // keep last

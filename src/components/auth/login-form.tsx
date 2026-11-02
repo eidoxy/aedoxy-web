@@ -14,6 +14,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string>();
   const [needsCode, setNeedsCode] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const {
     register,
     handleSubmit,
@@ -33,6 +34,22 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       return;
     }
     setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Email atau kata sandi salah.");
+  }
+
+  /** Discoverable credential: the browser lists the passkeys for this site, so no email is typed. */
+  async function passkey() {
+    setFormError(undefined);
+    setPasskeyBusy(true);
+    const { data, error } = await authClient.signIn.passkey();
+    if (error) {
+      setPasskeyBusy(false);
+      setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Masuk dengan passkey gagal atau dibatalkan.");
+      return;
+    }
+    // Inside an OIDC flow (console login) the client already follows the redirect back to /oauth2/authorize.
+    if ((data as { redirect?: boolean } | null)?.redirect) return;
+    router.replace("/dashboard");
+    router.refresh();
   }
 
   async function google() {
@@ -66,6 +83,10 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       <Button type="submit" disabled={isSubmitting} className="mt-2 h-11 w-full text-sm font-semibold">
         {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
         {isSubmitting ? "Memproses..." : "Masuk"}
+      </Button>
+      <Button type="button" variant="outline" onClick={passkey} disabled={passkeyBusy || isSubmitting} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
+        {passkeyBusy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+        Masuk dengan passkey
       </Button>
       {googleEnabled && (
         <Button type="button" variant="outline" onClick={google} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">

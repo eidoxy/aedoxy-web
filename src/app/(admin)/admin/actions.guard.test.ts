@@ -21,7 +21,7 @@ import { createPromoAction, stopPromoAction } from "./promos/actions";
 import { duplicatePlanAction, movePlanAction, savePlanAction, setEnabledAction, setPriceAction } from "./plans/actions";
 import { hideActivityItemAction, saveActivitySettingsAction } from "./activity/actions";
 import { saveModelMetaAction } from "./models/actions";
-import { regenerateBackupCodesAction, resetTwoFactorAction } from "./security/actions";
+import { confirmPasskeyAddAction, deletePasskeyAction, regenerateBackupCodesAction, resetTwoFactorAction } from "./security/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
 import { GET as exportLedger } from "./pool/export/route";
 
@@ -42,6 +42,8 @@ const actions = {
   saveModelMetaAction,
   regenerateBackupCodesAction,
   resetTwoFactorAction,
+  confirmPasskeyAddAction,
+  deletePasskeyAction,
 };
 const plain = { duplicatePlanAction, movePlanAction };
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq, ne } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { auth } from "@/server/auth";
@@ -9,6 +10,7 @@ import { formStrings, toActionError, type AdminFormState } from "@/server/admin-
 import { auditSecurity, confirmPassword } from "@/server/admin-security";
 import { db } from "@/server/db/client";
 import { session as sessionTable } from "@/server/db/schema";
+import { grantFreshAuth } from "@/server/domain/fresh-auth";
 
 /** Result of an action that may hand back one-time secrets (backup codes). Shown once, never stored. */
 export type SecurityFormState = AdminFormState & { codes?: string[] };
@@ -34,6 +36,39 @@ export async function regenerateBackupCodesAction(_prev: SecurityFormState, form
   } catch (err) {
     return toActionError(err);
   }
+}
+
+/**
+ * Step 1 of adding a passkey: password + fresh 2FA proof. On success this session may add ONE passkey in the
+ * next 5 minutes (the passkey routes refuse everything else, see passkey-policy.ts). Step 2 is the browser ceremony.
+ */
+export async function confirmPasskeyAddAction(_prev: SecurityFormState, formData: FormData): Promise<SecurityFormState> {
+  const session = await requireAdmin();
+  try {
+    await confirm(session, formStrings(formData));
+    await grantFreshAuth(session.session.id, "passkey_register");
+    await auditSecurity(await getAdminActor(session), "admin.passkey.add_confirmed");
+    return { ok: "Terkonfirmasi. Ikuti petunjuk peramban untuk membuat passkey." };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+const deleteInput = z.object({ id: z.string().min(1).max(128) });
+
+/** Removes one of the caller's own passkeys (Better Auth checks the owner). The UI asks for a second click first. */
+export async function deletePasskeyAction(_prev: SecurityFormState, formData: FormData): Promise<SecurityFormState> {
+  const session = await requireAdmin();
+  const parsed = deleteInput.safeParse(formStrings(formData));
+  if (!parsed.success) return { error: "Permintaan tidak valid." };
+  try {
+    await auth.api.deletePasskey({ headers: await headers(), body: { id: parsed.data.id } });
+    await auditSecurity(await getAdminActor(session), "admin.passkey.delete", { passkeyId: parsed.data.id });
+  } catch (err) {
+    return toActionError(err);
+  }
+  revalidatePath("/admin/security");
+  return { ok: "Passkey dihapus." };
 }
 
 /**

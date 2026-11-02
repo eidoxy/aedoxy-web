@@ -26,6 +26,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { session } from "./auth-schema";
+
 export * from "./auth-schema";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
@@ -285,6 +287,25 @@ export const adminAuditLog = pgTable("admin_audit_log", {
   ip: text("ip"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
+
+/**
+ * Short-lived, single-use proof that THIS session just did something strong (a passkey assertion for a
+ * sensitive action, or password + 2FA before adding a passkey). Tied to one session row, so it dies with it.
+ * See domain/fresh-auth.ts.
+ */
+export const freshAuth = pgTable(
+  "fresh_auth",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => session.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull(),
+    expiresAt: ts("expires_at").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("fresh_auth_session_purpose_uidx").on(t.sessionId, t.purpose)],
+);
 
 /** Small admin-owned settings, one jsonb value per key. Key "activity": F07 feed controls (see domain/activity.ts). */
 export const siteSettings = pgTable("site_settings", {

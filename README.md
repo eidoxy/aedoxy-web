@@ -32,7 +32,10 @@ Copy `.env.example` to `.env.local`. All integration variables are optional unti
 ## Pemulihan 2FA admin
 
 1. Masih punya kode cadangan: masuk dengan kata sandi, pakai kode cadangan sebagai kode 2FA, lalu di `/admin/security` buat ulang kode cadangan atau atur ulang 2FA.
-2. Semua hilang: operator server menjalankan `bun run db:reset-2fa <email>`. Perintah ini menghapus rahasia 2FA, mengeluarkan user dari semua sesi, dan mencatat audit (`cli:reset-2fa`). Tidak ada endpoint HTTP untuk ini. Setelah itu admin masuk dengan kata sandi dan diarahkan ke `/admin/security` untuk mendaftar 2FA ulang.
+2. Punya passkey terdaftar: masuk dengan passkey (tanpa kode 2FA), lalu atur ulang 2FA di `/admin/security`.
+3. Semua hilang: operator server menjalankan `bun run db:reset-2fa <email>`. Perintah ini menghapus rahasia 2FA, mengeluarkan user dari semua sesi, dan mencatat audit (`cli:reset-2fa`). Tidak ada endpoint HTTP untuk ini. Setelah itu admin masuk dengan kata sandi dan diarahkan ke `/admin/security` untuk mendaftar 2FA ulang.
+
+Passkey (WebAuthn): relying party id dan origin diturunkan dari `BETTER_AUTH_URL` (atau `NEXT_PUBLIC_SITE_URL` bila kosong). Saat dev buka situs lewat `http://localhost:3000`, bukan `127.0.0.1`: WebAuthn menolak alamat IP sebagai relying party id.
 
 ## Layout
 
