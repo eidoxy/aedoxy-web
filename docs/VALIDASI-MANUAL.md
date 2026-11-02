@@ -32,7 +32,7 @@ Alur pembayaran Poketo, skema harga, kurs, dan guard server action.
 Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`), console (`:3100`), dan `bun run worker`. Tunnel `cloudflared tunnel run aedoxy-dev` hanya perlu untuk B6. Gunakan jendela privat untuk akun user biasa.
 
 ### B0. Gerbang otomatis (jalankan dulu)
-- [ ] `bunx tsc --noEmit` tanpa error.
+- [ ] `bun run typecheck` tanpa error (menjalankan `next typegen` dulu agar tipe global `PageProps` ada).
 - [ ] `bunx eslint src scripts` tanpa error.
 - [ ] Dengan `DATABASE_URL_TEST` terisi (`postgres://aedoxy:aedoxy_dev@127.0.0.1:54320/aedoxy_test`), `bun run test` lulus semua. Tanpa variabel itu 249 tes integrasi gagal. Itu bukan bug.
 - [ ] `bun run build` berhasil.
