@@ -16,8 +16,8 @@ import { syncPlan } from "./plan-sync";
 
 type PlanRow = typeof plans.$inferSelect;
 
-/** Fields pushed to New API (plan-sync.ts). Price, compare-at price, badge, stock and sale window are not. */
-export const SYNCED_FIELDS = ["name", "subtitle", "durationUnit", "durationValue", "creditQuota", "upgradeGroup", "maxPurchasePerUser", "enabled", "sortOrder"] as const;
+/** Fields pushed to New API (plan-sync.ts). Price, compare-at price, badge, stock, sale window and display order are not. */
+export const SYNCED_FIELDS = ["name", "subtitle", "durationUnit", "durationValue", "creditQuota", "upgradeGroup", "maxPurchasePerUser", "enabled"] as const;
 
 export function syncedFieldsChanged(before: Pick<PlanRow, (typeof SYNCED_FIELDS)[number]>, after: Pick<PlanRow, (typeof SYNCED_FIELDS)[number]>): boolean {
   return SYNCED_FIELDS.some((k) => before[k] !== after[k]);
@@ -94,7 +94,7 @@ export async function updatePlan(actor: Actor, id: number, input: PlanInput, opt
       throw new AdminError("Paket ini sudah pernah terjual. Konfirmasi perubahan kredit, atau simpan sebagai paket baru.", "CREDIT_CHANGE_NEEDS_CONFIRM");
     }
     const { sortOrder, ...rest } = input;
-    const changed = syncedFieldsChanged(before, { ...before, ...rest, sortOrder: sortOrder ?? before.sortOrder });
+    const changed = syncedFieldsChanged(before, { ...before, ...rest });
     const [plan] = await tx
       .update(plans)
       .set({
@@ -146,7 +146,11 @@ export async function duplicatePlan(actor: Actor, id: number): Promise<PlanRow> 
   });
 }
 
-/** Swaps the plan with its neighbour in the displayed order. Returns the ids whose sort order changed. */
+/**
+ * Swaps the plan with its neighbour in the displayed order. Returns the ids whose sort order changed.
+ * Order is display-only (not a synced field), so `fields_version` stays put. Only the two swapped plans
+ * are touched, unless two plans share a sort order: then everything is renumbered to repair the tie.
+ */
 export async function movePlan(actor: Actor, id: number, direction: "up" | "down"): Promise<number[]> {
   return db.transaction(async (tx) => {
     // Locks every plan row in a fixed order so two concurrent moves cannot interleave.
@@ -158,11 +162,12 @@ export async function movePlan(actor: Actor, id: number, direction: "up" | "down
 
     const order = [...all];
     [order[i], order[j]] = [order[j], order[i]];
+    const hasTie = all.some((p, k) => k > 0 && p.sortOrder === all[k - 1].sortOrder);
     const changedIds: number[] = [];
     for (const [idx, p] of order.entries()) {
-      const sortOrder = idx + 1; // renumbering also repairs ties
+      const sortOrder = hasTie ? idx + 1 : all[idx].sortOrder; // each position keeps its value; the plans trade places
       if (p.sortOrder === sortOrder) continue;
-      await tx.update(plans).set({ sortOrder, fieldsVersion: sql`${plans.fieldsVersion} + 1`, updatedAt: new Date() }).where(eq(plans.id, p.id));
+      await tx.update(plans).set({ sortOrder, updatedAt: new Date() }).where(eq(plans.id, p.id));
       changedIds.push(p.id);
     }
     await writeAudit(tx, { actor, action: "plan.move", target: `plan:${id}`, before: { order: all.map((p) => p.id) }, after: { order: order.map((p) => p.id), direction } });
@@ -187,6 +192,22 @@ export async function syncPlansBestEffort(ids: number[]): Promise<SyncOutcome[]>
     }
   }
   return out;
+}
+
+/**
+ * After a reorder: pushes `sort_order` to New API for plans that are already in sync. Failures are logged
+ * and change nothing. An unsynced plan is skipped; its next sync carries the current order.
+ */
+export async function pushSortOrdersBestEffort(ids: number[]): Promise<void> {
+  for (const id of ids) {
+    const [p] = await db.select().from(plans).where(eq(plans.id, id));
+    if (!p || !isPlanSynced(p)) continue;
+    try {
+      await syncPlan(id); // same version in, same version out: the sync state does not move
+    } catch (err) {
+      console.error("[admin-plans] sort order push failed", { id, error: err instanceof Error ? err.message : "unknown" });
+    }
+  }
 }
 
 export type AdminPlanRow = PlanRow & { paidCount: number; revenueIdr: number; synced: boolean };

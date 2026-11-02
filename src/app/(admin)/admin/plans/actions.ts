@@ -6,7 +6,7 @@ import { z } from "zod";
 import { parsePlanForm } from "@/lib/schemas/plan";
 import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
 import { formStrings, toActionError, type AdminFormState } from "@/server/admin-action";
-import { createPlan, duplicatePlan, movePlan, setPlanEnabled, setPlanPrice, syncPlansBestEffort, updatePlan } from "@/server/domain/admin-plans";
+import { createPlan, duplicatePlan, movePlan, pushSortOrdersBestEffort, setPlanEnabled, setPlanPrice, syncPlansBestEffort, updatePlan } from "@/server/domain/admin-plans";
 import { AdminError } from "@/server/domain/audit";
 
 const SYNC_FAILED = "Tersimpan, tetapi sinkron ke New API gagal. Paket belum bisa dibeli sampai sinkron berhasil (dicoba ulang tiap jam).";
@@ -101,6 +101,6 @@ export async function movePlanAction(formData: FormData): Promise<void> {
   const direction = z.enum(["up", "down"]).safeParse(formData.get("direction"));
   if (!id.success || !direction.success) return;
   const changed = await movePlan(await getAdminActor(session), id.data, direction.data);
-  await syncPlansBestEffort(changed);
+  await pushSortOrdersBestEffort(changed);
   refresh();
 }

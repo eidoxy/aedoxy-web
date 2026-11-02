@@ -9,6 +9,7 @@ import {
   duplicatePlan,
   listAdminPlans,
   movePlan,
+  pushSortOrdersBestEffort,
   setPlanEnabled,
   setPlanPrice,
   syncedFieldsChanged,
@@ -72,7 +73,8 @@ describe("syncedFieldsChanged", () => {
   const base = { name: "A", subtitle: null, durationUnit: "day", durationValue: 30, creditQuota: 1, upgradeGroup: null, maxPurchasePerUser: 0, enabled: true, sortOrder: 1 } as const;
   it("is false for nothing and true for each mirrored field", () => {
     expect(syncedFieldsChanged(base, { ...base })).toBe(false);
-    for (const change of [{ name: "B" }, { subtitle: "x" }, { durationValue: 7 }, { creditQuota: 2 }, { upgradeGroup: "g" }, { maxPurchasePerUser: 1 }, { enabled: false }, { sortOrder: 2 }]) {
+    expect(syncedFieldsChanged(base, { ...base, sortOrder: 2 })).toBe(false); // display order is not mirrored
+    for (const change of [{ name: "B" }, { subtitle: "x" }, { durationValue: 7 }, { creditQuota: 2 }, { upgradeGroup: "g" }, { maxPurchasePerUser: 1 }, { enabled: false }]) {
       expect(syncedFieldsChanged(base, { ...base, ...change })).toBe(true);
     }
   });
@@ -247,6 +249,48 @@ describe("movePlan", () => {
     expect((await rowOf(b.id)).sortOrder).toBe(3);
     expect(await movePlan(actor, a.id, "up")).toEqual([]);
     expect((await audits("plan.move")).length).toBe(1);
+  });
+});
+
+describe("reordering keeps every plan sellable", () => {
+  it("leaves versions and sync state alone, touches only the swapped pair, and pushes sort_order", async () => {
+    await seedPool(100_000_000);
+    const [a, b, c] = [await seedPlan({ name: "A", sortOrder: 1, newapiPlanId: 7 }), await seedPlan({ name: "B", sortOrder: 2, newapiPlanId: 8 }), await seedPlan({ name: "C", sortOrder: 3, newapiPlanId: 9 })];
+
+    const changed = [...(await movePlan(actor, c.id, "up")), ...(await movePlan(actor, a.id, "down")), ...(await movePlan(actor, b.id, "up"))];
+    await pushSortOrdersBestEffort(changed);
+
+    expect((await listAdminPlans()).map((p) => [p.name, p.sortOrder, p.synced, p.fieldsVersion])).toEqual([
+      ["C", 1, true, 1],
+      ["B", 2, true, 1],
+      ["A", 3, true, 1],
+    ]);
+    expect(fake.newapiPlans.get(9)).toMatchObject({ sort_order: 1 });
+    for (const p of [a, b, c]) expect(await tryBuy(p.id)).toBe("bought");
+  });
+
+  it("a failed push to New API changes nothing", async () => {
+    const a = await seedPlan({ name: "A", sortOrder: 1 });
+    const b = await seedPlan({ name: "B", sortOrder: 2, newapiPlanId: 8 });
+    fake.state.rejectPlan = 5;
+
+    await pushSortOrdersBestEffort(await movePlan(actor, b.id, "up"));
+
+    expect(fake.state.calls.some((c) => c.includes("/admin/plans"))).toBe(true);
+    for (const p of [a, b]) expect(await rowOf(p.id)).toMatchObject({ fieldsVersion: 1, syncedVersion: 1 });
+    expect((await listAdminPlans()).map((p) => p.name)).toEqual(["B", "A"]);
+  });
+
+  it("does not push an unsynced plan", async () => {
+    const a = await seedPlan({ name: "A", sortOrder: 1 });
+    await updatePlan(actor, a.id, input({ name: "A2", sortOrder: "1" })); // now stale
+    const b = await seedPlan({ name: "B", sortOrder: 2 });
+    fake.state.calls.length = 0;
+
+    await pushSortOrdersBestEffort(await movePlan(actor, b.id, "up"));
+
+    expect(fake.state.calls.filter((c) => c.includes("/admin/plans"))).toHaveLength(1); // only B, not stale A
+    expect((await rowOf(a.id)).syncedVersion).toBe(1);
   });
 });
 
