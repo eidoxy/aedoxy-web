@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { FormMessage, TextField } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { loginSchema, type LoginValues } from "@/lib/schemas/auth";
+import { isEmailIdentifier, loginSchema, type LoginValues } from "@/lib/schemas/auth";
 
 export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boolean; githubEnabled: boolean }) {
   const router = useRouter();
@@ -19,21 +19,26 @@ export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boo
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
+  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { identifier: "", password: "" } });
 
   async function onSubmit(values: LoginValues) {
     setFormError(undefined);
-    const { data, error } = await authClient.signIn.email({ ...values, callbackURL: "/dashboard" });
+    // Both routes answer the same way: same error codes, and a wrong name or password is never told apart from an unknown account.
+    const { identifier, password } = values;
+    const { data, error } = isEmailIdentifier(identifier)
+      ? await authClient.signIn.email({ email: identifier, password, callbackURL: "/dashboard" })
+      : await authClient.signIn.username({ username: identifier.toLowerCase(), password, callbackURL: "/dashboard" });
     if (!error) {
       // An account with 2FA (admins) gets no session yet: ask for the code first.
       if ((data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) setNeedsCode(true);
       return; // otherwise the client follows the redirect (dashboard, or back into the OIDC flow)
     }
     if (error.code === "EMAIL_NOT_VERIFIED") {
-      router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
+      // A username does not give us an email address; the page then asks for it before resending.
+      router.push(isEmailIdentifier(identifier) ? `/verify-email?email=${encodeURIComponent(identifier)}` : "/verify-email");
       return;
     }
-    setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Email atau kata sandi salah.");
+    setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Username/email atau kata sandi salah.");
   }
 
   /** Discoverable credential: the browser lists the passkeys for this site, so no email is typed. */
@@ -63,13 +68,13 @@ export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boo
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-1">
       <TextField
-        id="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        inputMode="email"
-        error={errors.email?.message}
-        {...register("email")}
+        id="identifier"
+        label="Username atau email"
+        autoComplete="username"
+        autoCapitalize="none"
+        spellCheck={false}
+        error={errors.identifier?.message}
+        {...register("identifier")}
       />
       <TextField
         id="password"

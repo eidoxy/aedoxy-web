@@ -1,20 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from "./auth";
+import { forgotPasswordSchema, isEmailIdentifier, loginSchema, registerSchema, resetPasswordSchema } from "./auth";
 
 describe("auth schemas", () => {
-  it("trims and validates the email on login", () => {
-    expect(loginSchema.safeParse({ email: "  a@b.co ", password: "x" })).toMatchObject({ success: true, data: { email: "a@b.co" } });
-    expect(loginSchema.safeParse({ email: "nope", password: "x" }).success).toBe(false);
-    expect(loginSchema.safeParse({ email: "a@b.co", password: "" }).success).toBe(false);
+  it("accepts a username or an email on login and trims it", () => {
+    expect(loginSchema.safeParse({ identifier: "  a@b.co ", password: "x" })).toMatchObject({ success: true, data: { identifier: "a@b.co" } });
+    expect(loginSchema.safeParse({ identifier: " ada_1 ", password: "x" })).toMatchObject({ success: true, data: { identifier: "ada_1" } });
+    expect(loginSchema.safeParse({ identifier: "  ", password: "x" }).success).toBe(false);
+    expect(loginSchema.safeParse({ identifier: "a@b.co", password: "" }).success).toBe(false);
+  });
+
+  it("tells emails and usernames apart by the @", () => {
+    expect(isEmailIdentifier("a@b.co")).toBe(true);
+    expect(isEmailIdentifier("ada_1")).toBe(false);
   });
 
   it("requires a 10 character password on register", () => {
-    const base = { name: "Ada", email: "a@b.co" };
+    const base = { username: "ada_l", email: "a@b.co" };
     expect(registerSchema.safeParse({ ...base, password: "123456789" }).success).toBe(false);
     expect(registerSchema.safeParse({ ...base, password: "1234567890" }).success).toBe(true);
-    expect(registerSchema.safeParse({ ...base, name: "A", password: "1234567890" }).success).toBe(false);
   });
 
+  it("lowercases the username and explains what is wrong with it in Indonesian", () => {
+    const base = { email: "a@b.co", password: "1234567890" };
+    expect(registerSchema.safeParse({ ...base, username: " Ada_L " })).toMatchObject({ success: true, data: { username: "ada_l" } });
+    const messageFor = (username: string) => {
+      const r = registerSchema.safeParse({ ...base, username });
+      return r.success ? null : r.error.issues[0].message;
+    };
+    expect(messageFor("ab")).toBe("Username 3 sampai 20 karakter");
+    expect(messageFor("a".repeat(21))).toBe("Username 3 sampai 20 karakter");
+    expect(messageFor("ada.l")).toMatch(/huruf kecil, angka/);
+    expect(messageFor("admin")).toBe("Username ini tidak tersedia");
+  });
   it("rejects an invalid email when asking for a reset link", () => {
     expect(forgotPasswordSchema.safeParse({ email: "x" }).success).toBe(false);
     expect(forgotPasswordSchema.safeParse({ email: "a@b.co" }).success).toBe(true);

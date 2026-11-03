@@ -17,13 +17,21 @@ export function RegisterForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterValues>({ resolver: zodResolver(registerSchema), defaultValues: { name: "", email: "", password: "" } });
+  } = useForm<RegisterValues>({ resolver: zodResolver(registerSchema), defaultValues: { username: "", email: "", password: "" } });
 
   async function onSubmit(values: RegisterValues) {
     setFormError(undefined);
-    const { error } = await authClient.signUp.email({ ...values, callbackURL: "/dashboard" });
+    // Better Auth requires a name; it is the username, and the username plugin stores the lowercase form.
+    const { error } = await authClient.signUp.email({ ...values, name: values.username, callbackURL: "/dashboard" });
     if (error) {
-      setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Pendaftaran gagal. Periksa data Anda lalu coba lagi.");
+      // A taken username may be named outright; nothing here ever says whether an email is registered.
+      setFormError(
+        error.status === 429
+          ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi."
+          : error.code === "USERNAME_IS_ALREADY_TAKEN"
+            ? "Username sudah dipakai. Pilih username lain."
+            : "Pendaftaran gagal. Periksa data Anda lalu coba lagi.",
+      );
       return;
     }
     router.push(`/verify-email?email=${encodeURIComponent(values.email)}&sent=1`);
@@ -31,7 +39,16 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-1">
-      <TextField id="name" label="Nama" autoComplete="name" error={errors.name?.message} {...register("name")} />
+      <TextField
+        id="username"
+        label="Username"
+        autoComplete="username"
+        autoCapitalize="none"
+        spellCheck={false}
+        hint="3 sampai 20 karakter: huruf kecil, angka, dan garis bawah (_)."
+        error={errors.username?.message}
+        {...register("username")}
+      />
       <TextField
         id="email"
         label="Email"

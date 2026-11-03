@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/server/auth";
 import { db, pool as pgPool } from "@/server/db/client";
-import { user } from "@/server/db/schema";
+import { twoFactor, user } from "@/server/db/schema";
 import { githubSignIn } from "@/server/test/github-oauth";
 import { prepareDatabase, resetDatabase, seedUser } from "@/server/test/helpers";
 import { assignGeneratedUsername } from "@/server/username";
@@ -63,6 +63,19 @@ describe("username sign-up and sign-in", () => {
 
     await expect(auth.api.signInUsername({ body: { username: "ada_l", password: "wrong-wrong-wrong" } })).rejects.toMatchObject({ status: "UNAUTHORIZED" });
     await expect(auth.api.signInUsername({ body: { username: "nobody_here", password: "wrong-wrong-wrong" } })).rejects.toMatchObject({ status: "UNAUTHORIZED" });
+  });
+
+  it("asks an account with 2FA for its code, so the username route is no way around it", async () => {
+    await signUp("admin_two", "two@example.com");
+    await verifyEmailOf("two@example.com");
+    const row = await rowByEmail("two@example.com");
+    await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, row.id));
+    await db.insert(twoFactor).values({ id: "tf1", userId: row.id, secret: "x", backupCodes: "x" });
+
+    const res = await auth.api.signInUsername({ body: { username: "admin_two", password: PASSWORD }, headers: new Headers(), returnHeaders: true });
+
+    expect(res.response).toMatchObject({ twoFactorRedirect: true });
+    expect(res.headers.getSetCookie().some((c) => c.startsWith("better-auth.session_token=") && !c.includes("Max-Age=0"))).toBe(false);
   });
 
   it("rejects a duplicate username, whatever its case", async () => {
