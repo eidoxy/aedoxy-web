@@ -142,6 +142,89 @@ export function ModelsCatalog({
       `${formatUsd(inUsd)} / ${formatUsd(outUsd)}`
     );
 
+  // Cell bodies shared by the table (>= xl) and the cards (below xl), so both show the same figures.
+  const nameCell = (m: Model) => (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono text-sm text-heading">{m.id}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => copy(m.id)}
+            aria-label={`Salin nama model ${m.id}`}
+            className="rounded text-faint hover:bg-transparent hover:text-heading dark:hover:bg-transparent"
+          >
+            {copiedId === m.id ? <Check className="size-3.5 text-primary-ink" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{copiedId === m.id ? "Disalin" : "Salin nama model"}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+  const contextCell = (m: Model) =>
+    m.contextIn === null ? (
+      <span className="text-faint">–</span>
+    ) : (
+      <>
+        <span className="font-semibold text-heading">{formatTokens(m.contextIn)}</span> <span className="text-primary-ink">in</span>
+        {m.contextOut !== null && <span className="block text-faint">{formatTokens(m.contextOut)} out</span>}
+      </>
+    );
+  const capabilitiesCell = (m: Model) => (
+    <ul className="flex gap-1.5">
+      {m.capabilities.map((c) => {
+        const { label, icon: Icon } = CAPABILITY[c];
+        return (
+          <li key={c} title={label} className="grid size-7 place-items-center rounded-md bg-alt text-fg-muted">
+            <Icon className="size-3.5" aria-hidden />
+            <span className="sr-only">{label}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+  const statusCell = (m: Model) => (
+    <span className="inline-flex items-center gap-2 text-sm text-fg-soft">
+      <span className={cn("size-2 rounded-full", STATUS[m.status].dot)} aria-hidden />
+      {STATUS[m.status].label}
+    </span>
+  );
+  const officialCell = (m: Model) => {
+    const saving = savingPercent(m);
+    return m.officialInputUsdPerM !== null && m.officialOutputUsdPerM !== null ? (
+      <>
+        <s className="text-faint">
+          <span className="sr-only">Harga resmi </span>
+          {officialPair(m.officialInputUsdPerM, m.officialOutputUsdPerM)}
+        </s>
+        {saving !== null && <span className="block text-primary-ink">hemat {saving}%</span>}
+      </>
+    ) : (
+      <span className="text-faint">–</span>
+    );
+  };
+  const creditCell = (m: Model) =>
+    m.creditInputUsdPerM !== null && m.creditOutputUsdPerM !== null ? (
+      <>
+        <span className="text-sm font-semibold text-heading">{formatUsd(m.creditInputUsdPerM)}</span> <span className="text-faint">in</span>
+        <span className="block text-fg-soft">
+          {formatUsd(m.creditOutputUsdPerM)} <span className="text-faint">out</span>
+        </span>
+      </>
+    ) : m.creditPerRequestUsd !== null ? (
+      <>
+        <span className="text-sm font-semibold text-heading">{formatUsd(m.creditPerRequestUsd)}</span> <span className="text-faint">/ request</span>
+      </>
+    ) : (
+      <span className="text-faint">–</span>
+    );
+  const perPlanCell = (m: Model) => {
+    const perPlan = plan ? outputPerPlan(m, plan.creditUsd) : null;
+    return perPlan ? `${formatTokens(perPlan.count)} ${perPlan.unit}` : <span className="text-faint">–</span>;
+  };
+
   function reset() {
     setQuery("");
     setProviderId("all");
@@ -268,7 +351,7 @@ export function ModelsCatalog({
                 </div>
               </DitherPanel>
 
-              <div className="relative min-w-0 overflow-x-auto">
+              <div className="relative hidden min-w-0 overflow-x-auto xl:block">
                 <Table className="min-w-[860px] text-left">
                   <TableCaption className="sr-only">Model {provider.name}</TableCaption>
                   <TableHeader>
@@ -287,101 +370,57 @@ export function ModelsCatalog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((m) => {
-                      const saving = savingPercent(m);
-                      const st = STATUS[m.status];
-                      const perPlan = plan ? outputPerPlan(m, plan.creditUsd) : null;
-                      return (
-                        <TableRow key={m.id} className="border-line hover:bg-transparent">
-                          <TableCell className="px-4 py-3.5 whitespace-normal">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-sm text-heading">{m.id}</span>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-xs"
-                                    onClick={() => copy(m.id)}
-                                    aria-label={`Salin nama model ${m.id}`}
-                                    className="rounded text-faint hover:bg-transparent hover:text-heading dark:hover:bg-transparent"
-                                  >
-                                    {copiedId === m.id ? <Check className="size-3.5 text-primary-ink" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>{copiedId === m.id ? "Disalin" : "Salin nama model"}</TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-4 py-3.5 font-mono text-xs leading-5 whitespace-nowrap">
-                            {m.contextIn === null ? (
-                              <span className="text-faint">–</span>
-                            ) : (
-                              <>
-                                <span className="font-semibold text-heading">{formatTokens(m.contextIn)}</span> <span className="text-primary-ink">in</span>
-                                {m.contextOut !== null && <span className="block text-faint">{formatTokens(m.contextOut)} out</span>}
-                              </>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4 py-3.5 whitespace-normal">
-                            <ul className="flex gap-1.5">
-                              {m.capabilities.map((c) => {
-                                const { label, icon: Icon } = CAPABILITY[c];
-                                return (
-                                  <li key={c} title={label} className="grid size-7 place-items-center rounded-md bg-alt text-fg-muted">
-                                    <Icon className="size-3.5" aria-hidden />
-                                    <span className="sr-only">{label}</span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </TableCell>
-                          <TableCell className="px-4 py-3.5 whitespace-normal">
-                            <span className="inline-flex items-center gap-2 text-sm text-fg-soft">
-                              <span className={cn("size-2 rounded-full", st.dot)} aria-hidden />
-                              {st.label}
-                            </span>
-                          </TableCell>
-                          <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap">
-                            {m.officialInputUsdPerM !== null && m.officialOutputUsdPerM !== null ? (
-                              <>
-                                <s className="text-faint">
-                                  <span className="sr-only">Harga resmi </span>
-                                  {officialPair(m.officialInputUsdPerM, m.officialOutputUsdPerM)}
-                                </s>
-                                {saving !== null && <span className="block text-primary-ink">hemat {saving}%</span>}
-                              </>
-                            ) : (
-                              <span className="text-faint">–</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap">
-                            {m.creditInputUsdPerM !== null && m.creditOutputUsdPerM !== null ? (
-                              <>
-                                <span className="text-sm font-semibold text-heading">{formatUsd(m.creditInputUsdPerM)}</span> <span className="text-faint">in</span>
-                                <span className="block text-fg-soft">
-                                  {formatUsd(m.creditOutputUsdPerM)} <span className="text-faint">out</span>
-                                </span>
-                              </>
-                            ) : m.creditPerRequestUsd !== null ? (
-                              <>
-                                <span className="text-sm font-semibold text-heading">{formatUsd(m.creditPerRequestUsd)}</span> <span className="text-faint">/ request</span>
-                              </>
-                            ) : (
-                              <span className="text-faint">–</span>
-                            )}
-                          </TableCell>
-                          {plan && (
-                            <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap text-fg-soft">
-                              {perPlan ? `${formatTokens(perPlan.count)} ${perPlan.unit}` : <span className="text-faint">–</span>}
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
+                    {rows.map((m) => (
+                      <TableRow key={m.id} className="border-line hover:bg-transparent">
+                        <TableCell className="px-4 py-3.5 whitespace-normal">{nameCell(m)}</TableCell>
+                        <TableCell className="px-4 py-3.5 font-mono text-xs leading-5 whitespace-nowrap">{contextCell(m)}</TableCell>
+                        <TableCell className="px-4 py-3.5 whitespace-normal">{capabilitiesCell(m)}</TableCell>
+                        <TableCell className="px-4 py-3.5 whitespace-normal">{statusCell(m)}</TableCell>
+                        <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap">{officialCell(m)}</TableCell>
+                        <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap">{creditCell(m)}</TableCell>
+                        {plan && <TableCell className="px-4 py-3.5 text-right font-mono text-xs leading-5 whitespace-nowrap text-fg-soft">{perPlanCell(m)}</TableCell>}
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
+
+              <ul className="min-w-0 divide-y divide-line [overflow-wrap:anywhere] xl:hidden" aria-label={`Model ${provider.name}`}>
+                {rows.map((m) => (
+                  <li key={m.id} className="space-y-3 px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      {nameCell(m)}
+                      {statusCell(m)}
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 font-mono text-xs leading-5">
+                      <div>
+                        <dt className="mono-label text-faint">Biaya kredit / 1M</dt>
+                        <dd className="mt-1">{creditCell(m)}</dd>
+                      </div>
+                      <div>
+                        <dt className="mono-label text-faint">Resmi · in / out</dt>
+                        <dd className="mt-1">{officialCell(m)}</dd>
+                      </div>
+                      <div>
+                        <dt className="mono-label text-faint">Context</dt>
+                        <dd className="mt-1">{contextCell(m)}</dd>
+                      </div>
+                      <div>
+                        <dt className="mono-label text-faint">Kemampuan</dt>
+                        <dd className="mt-1">{m.capabilities.length > 0 ? capabilitiesCell(m) : <span className="text-faint">–</span>}</dd>
+                      </div>
+                      {plan && (
+                        <div className="col-span-2">
+                          <dt className="mono-label text-faint">
+                            ≈ Output per {plan.name} {formatUsd(plan.creditUsd)}
+                          </dt>
+                          <dd className="mt-1 text-fg-soft">{perPlanCell(m)}</dd>
+                        </div>
+                      )}
+                    </dl>
+                  </li>
+                ))}
+              </ul>
             </section>
           );
         })}
