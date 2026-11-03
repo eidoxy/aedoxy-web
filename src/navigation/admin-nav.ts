@@ -1,4 +1,4 @@
-import { Activity, Banknote, Boxes, Coins, LayoutDashboard, Package, ReceiptText, ScrollText, Settings2, ShieldCheck, Tag } from "lucide-react";
+import { Activity, Banknote, Boxes, Coins, LayoutDashboard, Package, ReceiptText, ScrollText, Settings2, ShieldCheck, Tag, Users } from "lucide-react";
 import type { NavGroup } from "./nav";
 
 const security: NavGroup = {
@@ -6,6 +6,7 @@ const security: NavGroup = {
   label: "Sistem",
   items: [
     { title: "Feed aktivitas", url: "/admin/activity", icon: Activity },
+    { title: "Pengguna", url: "/admin/users", icon: Users },
     { title: "Audit log", url: "/admin/audit", icon: ScrollText },
     { title: "Pengaturan situs", url: "/admin/settings", icon: Settings2 },
     { title: "Keamanan", url: "/admin/security", icon: ShieldCheck },

@@ -49,6 +49,14 @@ describe("menu config", () => {
     expect(navHrefs(adminNavFor(false))).not.toContain("/admin/settings");
   });
 
+  it("Pengguna sits in Sistem before Audit log and is hidden from an admin without 2FA", () => {
+    const urls = adminNav.find((g) => g.id === "system")!.items.map((i) => i.url);
+    expect(urls.indexOf("/admin/users")).toBeGreaterThan(-1);
+    expect(urls.indexOf("/admin/users")).toBeLessThan(urls.indexOf("/admin/audit"));
+    expect(navHrefs(adminNavFor(false))).not.toContain("/admin/users");
+    expect(pageTitle(adminNav, "/admin/users/abc")).toBe("Pengguna");
+  });
+
   it("admin menu without 2FA contains only Keamanan", () => {
     const groups = adminNavFor(false);
     expect(labels(groups)).toEqual(["Keamanan"]);
