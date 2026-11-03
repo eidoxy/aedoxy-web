@@ -1,7 +1,7 @@
 import { eq, sql, type SQL } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { session, user } from "@/server/db/schema";
-import { writeAudit, type Actor } from "./audit";
+import { AdminError, writeAudit, type Actor } from "./audit";
 import { syncConsoleAccountStatus } from "./console-status";
 
 /**
@@ -42,11 +42,12 @@ async function setBan(target: Target, ban: boolean, { actor, reason, expiresAt }
 
   const done = await db.transaction(async (tx) => {
     const [row] = await tx
-      .select({ id: user.id, email: user.email, banned: user.banned, banReason: user.banReason, banExpires: user.banExpires })
+      .select({ id: user.id, email: user.email, banned: user.banned, banReason: user.banReason, banExpires: user.banExpires, deletedAt: user.deletedAt })
       .from(user)
       .where(where)
       .for("update");
     if (!row) return null;
+    if (row.deletedAt) throw new AdminError("Akun ini sudah dihapus.", "USER_DELETED");
 
     await tx.update(user).set({ banned: ban, banReason: cleanReason, banExpires: cleanExpires, updatedAt: new Date() }).where(eq(user.id, row.id));
     const revoked = ban ? await tx.delete(session).where(eq(session.userId, row.id)).returning({ id: session.id }) : [];

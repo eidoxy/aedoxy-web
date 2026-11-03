@@ -11,7 +11,7 @@ import { ensureConsoleAccount } from "@/server/integrations/newapi";
  */
 export async function ensureConsoleAccountForUser(userId: string): Promise<number | null> {
   const [row] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
-  if (!row || !row.emailVerified) return null;
+  if (!row || !row.emailVerified || row.deletedAt) return null;
   if (row.newapiUserId != null) return row.newapiUserId;
 
   const account = await ensureConsoleAccount({

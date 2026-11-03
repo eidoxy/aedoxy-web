@@ -64,6 +64,13 @@
       "when": 1793697902146,
       "tag": "0008_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793704004285,
+      "tag": "0009_user_deleted_at",
+      "breakpoints": true
     }
   ]
 }

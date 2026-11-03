@@ -37,6 +37,8 @@ export const user = pgTable(
     /** Better Auth username plugin. Lowercase `a-z0-9_`, 3 to 20 chars; null for accounts created before usernames existed. */
     username: text("username"),
     displayUsername: text("display_username"),
+    /** Set when an admin deleted the account: the row stays (orders and ledger point at it), personal data is wiped. Counts as banned. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [uniqueIndex("user_username_uidx").on(table.username)],
 );
