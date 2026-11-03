@@ -101,7 +101,15 @@ export function installFakeServers() {
     /** trade_no -> subscriptions the bridge reports as replaced by that purchase. */
     replacedBy: {} as Record<string, { id: number; remaining: number }[]>,
     fulfillBodies: [] as Record<string, unknown>[],
+    ensureBodies: [] as { subject: string; username?: string }[],
+    statusBodies: [] as { subject: string; enabled: boolean }[],
+    /** Subjects (user ids) whose ensure / status calls answer HTTP 500. */
+    failEnsure: new Set<string>(),
+    failStatus: new Set<string>(),
+    /** Subjects whose console user is an Admin/Root: disabling answers HTTP 409. */
+    protectedSubjects: new Set<string>(),
   };
+  const consoleAccounts = new Map<string, { id: number; username: string; enabled: boolean }>(); // subject -> console user
 
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -166,6 +174,29 @@ export function installFakeServers() {
         return state.groups ? json({ success: true, message: "", data: state.groups }) : json({ success: false, message: "down" }, 500);
       }
 
+      if (method === "POST" && url.pathname === "/api/aedoxy/accounts/ensure") {
+        const body = JSON.parse(String(init?.body)) as { subject: string; username?: string };
+        state.ensureBodies.push(body);
+        if (state.failEnsure.has(body.subject)) return json({ success: false, message: "console down" }, 500);
+        const existing = consoleAccounts.get(body.subject);
+        if (existing) return json({ success: true, message: "", data: { user_id: existing.id, username: existing.username, created: false } });
+        const account = { id: 9000 + consoleAccounts.size, username: body.username ?? `aedoxy_${consoleAccounts.size}`, enabled: true };
+        consoleAccounts.set(body.subject, account);
+        return json({ success: true, message: "", data: { user_id: account.id, username: account.username, created: true } });
+      }
+
+      if (method === "POST" && url.pathname === "/api/aedoxy/accounts/status") {
+        const body = JSON.parse(String(init?.body)) as { subject: string; enabled: boolean };
+        state.statusBodies.push(body);
+        if (state.failStatus.has(body.subject)) return json({ success: false, message: "console down" }, 500);
+        const account = consoleAccounts.get(body.subject);
+        if (!account) return json({ success: false, message: "not found" }, 404);
+        if (!body.enabled && state.protectedSubjects.has(body.subject)) return json({ success: false, message: "protected" }, 409);
+        const changed = account.enabled !== body.enabled;
+        account.enabled = body.enabled;
+        return json({ success: true, message: "", data: { user_id: account.id, enabled: account.enabled, changed } });
+      }
+
       if (method === "POST" && url.pathname === "/api/aedoxy/fulfill") {
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
         state.fulfillBodies.push(body);
@@ -189,7 +220,7 @@ export function installFakeServers() {
     throw new Error(`Unexpected fetch in test: ${method} ${url.host}${url.pathname}`);
   });
 
-  return { invoices, subscriptions, newapiPlans, fulfilled, state };
+  return { invoices, subscriptions, newapiPlans, fulfilled, consoleAccounts, state };
 }
 
 /** Signs `rawBody` like Poketo does and builds the Request the route handler receives. */
