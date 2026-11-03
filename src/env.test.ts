@@ -47,3 +47,46 @@ it("keeps Google and GitHub optional when ENV_STRICT=true", async () => {
     vi.unstubAllEnvs();
   }
 });
+
+describe("EMAIL_SMTP_*", () => {
+  it("defaults to starttls and coerces the port", () => {
+    const env = parseEnv({ EMAIL_SMTP_HOST: "h", EMAIL_SMTP_PORT: "2525" });
+    expect([env.EMAIL_SMTP_TLS, env.EMAIL_SMTP_PORT]).toEqual(["starttls", 2525]);
+  });
+
+  it("rejects a bad port or TLS mode", () => {
+    for (const port of ["0", "65536", "abc", "25.5"]) expect(() => parseEnv({ EMAIL_SMTP_PORT: port })).toThrow(/EMAIL_SMTP_PORT/);
+    expect(() => parseEnv({ EMAIL_SMTP_TLS: "tls" })).toThrow(/EMAIL_SMTP_TLS/);
+  });
+
+  it("rejects user without password and vice versa, without echoing values", () => {
+    expect(() => parseEnv({ EMAIL_SMTP_USER: "u-secret" })).toThrow(/together/);
+    expect(() => parseEnv({ EMAIL_SMTP_PASSWORD: "pw-secret" })).toThrow(/together/);
+    expect(() => parseEnv({ EMAIL_SMTP_USER: "u-secret" })).not.toThrow(/u-secret/);
+    expect(parseEnv({ EMAIL_SMTP_USER: "u", EMAIL_SMTP_PASSWORD: "p" }).EMAIL_SMTP_PASSWORD).toBe("p");
+  });
+
+  // `strict` is fixed when env.ts loads, so reload the module with ENV_STRICT=true.
+  it("under ENV_STRICT=true requires host or URL and refuses tls=none", async () => {
+    const rest = {
+      ENV_STRICT: "true",
+      DATABASE_URL: "postgres://u:p@127.0.0.1:5432/x", BETTER_AUTH_SECRET: "x".repeat(32), BETTER_AUTH_URL: "https://aedoxy.test",
+      CONSOLE_OIDC_CLIENT_SECRET: "x", EMAIL_FROM: "x", POKETO_SECRET_KEY: "x", POKETO_WEBHOOK_SECRET: "x",
+      NEWAPI_INTERNAL_URL: "http://x.test", NEWAPI_BRIDGE_TOKEN: "x",
+    };
+    // The module parses process.env on import, so give that load a valid configuration.
+    for (const [k, v] of Object.entries({ ...rest, EMAIL_SMTP_HOST: "h" })) vi.stubEnv(k, v);
+    vi.resetModules();
+    try {
+      const { parseEnv: strictParse } = await import("@/env");
+      expect(() => strictParse(rest)).toThrow(/EMAIL_SMTP_HOST/);
+      expect(strictParse({ ...rest, EMAIL_SERVER_URL: "smtp://x" }).EMAIL_SERVER_URL).toBe("smtp://x");
+      expect(strictParse({ ...rest, EMAIL_SMTP_HOST: "h", EMAIL_SMTP_USER: "u", EMAIL_SMTP_PASSWORD: "p" }).EMAIL_SMTP_HOST).toBe("h");
+      expect(() => strictParse({ ...rest, EMAIL_SMTP_HOST: "h", EMAIL_SMTP_TLS: "none" })).toThrow(/EMAIL_SMTP_TLS/);
+      expect(() => strictParse({ ...rest, EMAIL_SMTP_HOST: "h", EMAIL_SMTP_USER: "u" })).toThrow(/together/);
+      expect(() => strictParse({ ...rest, EMAIL_FROM: "", EMAIL_SMTP_HOST: "h" })).toThrow(/EMAIL_FROM/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});

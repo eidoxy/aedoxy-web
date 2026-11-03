@@ -39,9 +39,16 @@ const schema = z.object({
   CONSOLE_OIDC_CLIENT_ID: z.string().min(1).default("aedoxy-console"),
   CONSOLE_OIDC_CLIENT_SECRET: later(z.string().min(1)),
 
-  // Transactional email (provider not chosen yet: Resend or SMTP)
+  // Transactional email over SMTP. Either the separate EMAIL_SMTP_* fields (win when HOST is set) or EMAIL_SERVER_URL.
+  // ENV_STRICT=true requires one of them (superRefine).
   EMAIL_FROM: later(z.string().min(1)),
-  EMAIL_SERVER_URL: later(z.string().min(1)),
+  EMAIL_SERVER_URL: z.string().min(1).optional(),
+  EMAIL_SMTP_HOST: z.string().min(1).optional(),
+  EMAIL_SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  EMAIL_SMTP_USER: z.string().min(1).optional(),
+  EMAIL_SMTP_PASSWORD: z.string().min(1).optional(),
+  // starttls: upgrade after connect, TLS required (default port 587). ssl: implicit TLS (465). none: local test servers only.
+  EMAIL_SMTP_TLS: z.enum(["starttls", "ssl", "none"]).default("starttls"),
   // Dev/test only: absolute file path that receives one JSON line per email. Refused when ENV_STRICT=true.
   EMAIL_DEV_OUTBOX: z.string().min(1).optional(),
 
@@ -62,6 +69,15 @@ const schema = z.object({
     if (!v[`${p}_CLIENT_ID`] !== !v[`${p}_CLIENT_SECRET`]) {
       ctx.addIssue({ code: "custom", path: [`${p}_CLIENT_ID`], message: `set ${p}_CLIENT_ID and ${p}_CLIENT_SECRET together, or leave both empty` });
     }
+  }
+  if (!v.EMAIL_SMTP_USER !== !v.EMAIL_SMTP_PASSWORD) {
+    ctx.addIssue({ code: "custom", path: ["EMAIL_SMTP_USER"], message: "set EMAIL_SMTP_USER and EMAIL_SMTP_PASSWORD together, or leave both empty" });
+  }
+  if (v.ENV_STRICT === "true" && !v.EMAIL_SMTP_HOST && !v.EMAIL_SERVER_URL) {
+    ctx.addIssue({ code: "custom", path: ["EMAIL_SMTP_HOST"], message: "set EMAIL_SMTP_HOST or EMAIL_SERVER_URL when ENV_STRICT=true" });
+  }
+  if (v.ENV_STRICT === "true" && v.EMAIL_SMTP_HOST && v.EMAIL_SMTP_TLS === "none") {
+    ctx.addIssue({ code: "custom", path: ["EMAIL_SMTP_TLS"], message: "EMAIL_SMTP_TLS=none is for local test servers and is refused when ENV_STRICT=true" });
   }
   if (!v.EMAIL_DEV_OUTBOX) return;
   const message =
