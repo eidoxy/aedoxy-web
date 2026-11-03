@@ -13,8 +13,8 @@ import { FormResult } from "./totp-field";
 
 type FormAction = (prev: AdminFormState, fd: FormData) => Promise<AdminFormState>;
 
-/** A confirmation dialog around one server action. No 2FA code: these are account-management actions of a signed-in admin. */
-function ActionDialog({
+/** A confirmation dialog around one server action. The caller adds a TotpField child when the action changes a credential. */
+export function ActionDialog({
   action,
   userId,
   trigger,
@@ -22,6 +22,7 @@ function ActionDialog({
   description,
   submit,
   destructive = false,
+  disabled = false,
   children,
 }: {
   action: FormAction;
@@ -31,12 +32,13 @@ function ActionDialog({
   description: React.ReactNode;
   submit: string;
   destructive?: boolean;
+  disabled?: boolean;
   children?: (state: AdminFormState) => React.ReactNode;
 }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant={destructive ? "destructive" : "outline"} size="sm">
+        <Button type="button" variant={destructive ? "destructive" : "outline"} size="sm" disabled={disabled}>
           {trigger}
         </Button>
       </DialogTrigger>

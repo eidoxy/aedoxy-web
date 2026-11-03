@@ -15,6 +15,7 @@ export type AdminUserRow = {
   twoFactorEnabled: boolean;
   banned: boolean;
   banExpires: string | null;
+  deleted: boolean;
   console: ConsoleState;
   createdAt: string;
 };
@@ -43,11 +44,12 @@ const columns = col.columns([
   col.accessor("role", { header: "Peran", cell: (c) => <Badge variant={c.getValue() === "admin" ? "default" : "secondary"}>{c.getValue()}</Badge> }),
   col.accessor((u) => (u.emailVerified ? "Ya" : "Belum"), { id: "emailVerified", header: "Email terverifikasi" }),
   col.accessor((u) => (u.twoFactorEnabled ? "Aktif" : "Tidak"), { id: "twoFactor", header: "2FA" }),
-  col.accessor((u) => (u.banned ? "Diblokir" : "Aktif"), {
+  col.accessor((u) => (u.deleted ? "Dihapus" : u.banned ? "Diblokir" : "Aktif"), {
     id: "status",
     header: "Status",
     cell: (c) => {
       const u = c.row.original;
+      if (u.deleted) return <Badge variant="destructive">Dihapus</Badge>;
       return u.banned ? (
         <Badge variant="destructive">{u.banExpires ? `Diblokir s/d ${adminDate.format(new Date(u.banExpires))}` : "Diblokir"}</Badge>
       ) : (

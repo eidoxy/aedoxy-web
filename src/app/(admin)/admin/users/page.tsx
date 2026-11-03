@@ -44,6 +44,7 @@ async function Users({ searchParams }: { searchParams: SearchParams }) {
               <option value="">Semua</option>
               <option value="active">Aktif</option>
               <option value="banned">Diblokir</option>
+              <option value="terhapus">Terhapus</option>
             </NativeSelect>
           </Field>
           <Field label="Email terverifikasi" htmlFor="verified">

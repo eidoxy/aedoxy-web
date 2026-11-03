@@ -5,9 +5,12 @@ import { Suspense } from "react";
 import { adminDate, Card } from "@/components/admin/common";
 import { CONSOLE_LABEL } from "@/components/admin/admin-users-table";
 import { UserActions } from "@/components/admin/user-actions";
+import { UserManage } from "@/components/admin/user-manage";
 import { PageHeader } from "@/components/console/page-header";
 import { CardsPageSkeleton } from "@/components/console/skeletons";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { TriangleAlert } from "lucide-react";
 import { requireAdmin } from "@/server/admin";
 import { getAdminUser } from "@/server/domain/admin-users";
 
@@ -38,6 +41,7 @@ async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
   const u = await getAdminUser(id);
   if (!u) notFound();
   const label = u.username ?? u.email;
+  const isSelf = u.id === admin.user.id;
 
   return (
     <div className="space-y-6">
@@ -45,8 +49,16 @@ async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
         eyebrow="Pengguna"
         title={label}
         description={<Link href="/admin/users" className="text-primary-ink underline-offset-4 hover:underline">Kembali ke daftar pengguna</Link>}
-        actions={u.ban.active ? <Badge variant="destructive">Diblokir</Badge> : <Badge variant="secondary">Aktif</Badge>}
+        actions={u.deletedAt ? <Badge variant="destructive">Dihapus</Badge> : u.ban.active ? <Badge variant="destructive">Diblokir</Badge> : <Badge variant="secondary">Aktif</Badge>}
       />
+
+      {u.deletedAt && (
+        <Alert variant="warning">
+          <TriangleAlert aria-hidden />
+          <AlertTitle>Akun ini dihapus pada {when(u.deletedAt)}</AlertTitle>
+          <AlertDescription>Data pribadi sudah dihapus dan semua aksi dinonaktifkan. Baris ini dipertahankan untuk catatan pesanan dan keuangan.</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -67,6 +79,8 @@ async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
           <h2 className="mb-2 text-lg font-medium text-heading">Akses</h2>
           <dl>
             <Row label="Metode login">{u.providers.length ? u.providers.join(", ") : "-"}</Row>
+            <Row label="Kata sandi">{u.hasPassword ? "Ada" : "Belum ada"}</Row>
+            <Row label="Passkey">{u.passkeyCount}</Row>
             <Row label="Sesi aktif">{u.activeSessions}</Row>
             <Row label="Blokir">{u.ban.active ? "Diblokir" : "Tidak diblokir"}</Row>
             {u.ban.active && (
@@ -79,12 +93,39 @@ async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
           </dl>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <h2 className="mb-3 text-lg font-medium text-heading">Kelola akun</h2>
-          <UserActions userId={u.id} isSelf={u.id === admin.user.id} banned={u.ban.active} role={u.role} label={label} />
-          {u.id === admin.user.id && <p className="mt-3 text-xs text-faint">Ini akun Anda: blokir dan ubah peran tidak tersedia.</p>}
-          <p className="mt-3 text-xs text-faint">Kata sandi, 2FA, dan passkey tidak dikelola di sini. Admin mengubah kredensialnya sendiri di Keamanan; untuk pengguna biasa pakai skrip operator.</p>
-        </Card>
+        {!u.deletedAt && (
+          <>
+            <Card className="lg:col-span-2">
+              <h2 className="mb-3 text-lg font-medium text-heading">Akses dan sesi</h2>
+              <UserActions userId={u.id} isSelf={isSelf} banned={u.ban.active} role={u.role} label={label} />
+              {isSelf && <p className="mt-3 text-xs text-faint">Ini akun Anda: blokir dan ubah peran tidak tersedia.</p>}
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <h2 className="mb-3 text-lg font-medium text-heading">Kelola akun</h2>
+              {isSelf ? (
+                <p className="text-sm text-fg-muted">Ini akun Anda. Ubah kata sandi, 2FA, dan passkey Anda sendiri di halaman Keamanan.</p>
+              ) : (
+                <>
+                  <UserManage
+                    userId={u.id}
+                    label={label}
+                    name={u.name}
+                    confirmWord={u.username ?? u.email}
+                    hasPassword={u.hasPassword}
+                    twoFactorEnabled={u.twoFactorEnabled}
+                    passkeyCount={u.passkeyCount}
+                    pendingOrders={u.pendingOrders}
+                    activePlan={u.activePlan ? { name: u.activePlan.name, endsAt: when(u.activePlan.endsAt) } : null}
+                  />
+                  <p className="mt-3 text-xs text-faint">
+                    Atur kata sandi, reset 2FA, dan reset passkey meminta kode 2FA Anda (atau passkey Anda) dan memberi tahu pengguna lewat email. Skrip operator di server tetap tersedia sebagai cadangan.
+                  </p>
+                </>
+              )}
+            </Card>
+          </>
+        )}
 
         <Card className="lg:col-span-2">
           <h2 className="mb-2 text-lg font-medium text-heading">Order terbaru</h2>

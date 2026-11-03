@@ -24,7 +24,7 @@ import { saveModelMetaAction } from "./models/actions";
 import { resetSiteAssetAction, saveAnnouncementAction, saveBrandAction, saveContactAction, saveDocsAction, saveLogoOptionsAction, uploadSiteAssetAction } from "./settings/actions";
 import { confirmPasskeyAddAction, deletePasskeyAction, regenerateBackupCodesAction, resetTwoFactorAction } from "./security/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
-import { banUserAction, revokeSessionsAction, setUserRoleAction, unbanUserAction } from "./users/actions";
+import { banUserAction, deleteUserAction, renameUserAction, resetUserPasskeysAction, resetUserTwoFactorAction, revokeSessionsAction, setUserPasswordAction, setUserRoleAction, unbanUserAction } from "./users/actions";
 import { GET as exportLedger } from "./pool/export/route";
 
 /** Every server action is a public endpoint, so each one must refuse on its own, before it reads the form. */
@@ -57,6 +57,11 @@ const actions = {
   unbanUserAction,
   setUserRoleAction,
   revokeSessionsAction,
+  renameUserAction,
+  setUserPasswordAction,
+  resetUserTwoFactorAction,
+  resetUserPasskeysAction,
+  deleteUserAction,
 };
 const plain = { duplicatePlanAction, movePlanAction };
 
