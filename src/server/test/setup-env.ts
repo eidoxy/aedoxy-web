@@ -8,6 +8,9 @@ if (process.env.DATABASE_URL_TEST) process.env.DATABASE_URL = process.env.DATABA
 else delete process.env.DATABASE_URL;
 
 process.env.ENV_STRICT = "false";
+// Dummy provider credentials so the social providers exist; the tests answer the provider HTTP calls themselves.
+process.env.GITHUB_CLIENT_ID = "gh-test-id";
+process.env.GITHUB_CLIENT_SECRET = "gh-test-secret";
 process.env.NEXT_PUBLIC_SITE_URL = "https://aedoxy.test";
 process.env.POKETO_BASE_URL = "http://poketo.test/api/v1";
 process.env.POKETO_SECRET_KEY = "sk_test_unit";

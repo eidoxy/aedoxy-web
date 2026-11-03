@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { loginSchema, type LoginValues } from "@/lib/schemas/auth";
 
-export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
+export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boolean; githubEnabled: boolean }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string>();
   const [needsCode, setNeedsCode] = useState(false);
@@ -52,10 +52,10 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
     router.refresh();
   }
 
-  async function google() {
+  async function social(provider: "google" | "github", label: string) {
     setFormError(undefined);
-    const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" });
-    if (error) setFormError("Masuk dengan Google gagal. Coba lagi.");
+    const { error } = await authClient.signIn.social({ provider, callbackURL: "/dashboard" });
+    if (error) setFormError(`Masuk dengan ${label} gagal. Coba lagi.`);
   }
 
   if (needsCode) return <TwoFactorStep />;
@@ -89,8 +89,13 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
         Masuk dengan passkey
       </Button>
       {googleEnabled && (
-        <Button type="button" variant="outline" onClick={google} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
+        <Button type="button" variant="outline" onClick={() => social("google", "Google")} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
           Masuk dengan Google
+        </Button>
+      )}
+      {githubEnabled && (
+        <Button type="button" variant="outline" onClick={() => social("github", "GitHub")} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
+          Masuk dengan GitHub
         </Button>
       )}
     </form>

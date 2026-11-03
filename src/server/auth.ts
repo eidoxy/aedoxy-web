@@ -10,6 +10,7 @@ import { ensureConsoleAccountForUser } from "@/server/account";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
+import { rejectUnverifiedOAuthEmail } from "@/server/oauth-email-guard";
 import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyGate, passkeyPlugin } from "@/server/passkey-policy";
 import { sessionOptions } from "@/server/session-config";
 import { sessionTrust } from "@/server/session-trust-plugin";
@@ -49,6 +50,7 @@ export const auth = betterAuth({
   disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", ...PASSKEY_PATHS_CLOSED_OVER_HTTP],
 
   user: {
+    validateUserInfo: rejectUnverifiedOAuthEmail,
     additionalFields: {
       newapiUserId: { type: "number", required: false, unique: true, input: false },
       feedVisibility: { type: "string", required: false, defaultValue: "masked", input: false },
@@ -89,10 +91,14 @@ export const auth = betterAuth({
     },
   },
 
-  socialProviders:
-    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-      ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
-      : {},
+  socialProviders: {
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }),
+    ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET && { github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET } }),
+  },
+
+  // A social login joins the existing user with the same email. Better Auth still requires that user's email to be verified
+  // (requireLocalEmailVerified defaults to true); the provider's own verified flag is enforced by validateUserInfo above.
+  account: { accountLinking: { enabled: true, trustedProviders: ["google", "github"] } },
 
   session: sessionOptions,
 

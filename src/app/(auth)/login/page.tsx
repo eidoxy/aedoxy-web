@@ -22,6 +22,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
   const [{ reset }, { brandName }] = await Promise.all([searchParams, getSiteSettings()]);
   const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+  const githubEnabled = Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
   return (
     <AuthCard
       title="Masuk"
@@ -39,7 +40,7 @@ async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">
         </p>
       }
     >
-      <LoginForm googleEnabled={googleEnabled} />
+      <LoginForm googleEnabled={googleEnabled} githubEnabled={githubEnabled} />
     </AuthCard>
   );
 }

@@ -34,6 +34,8 @@ sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # mence
 
 `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` opsional: kosongkan keduanya untuk menonaktifkan masuk dengan Google (isi keduanya atau tidak sama sekali; salah satu saja ditolak saat start). Email memakai SMTP: isi `EMAIL_SERVER_URL` (URL SMTP nodemailer, mis. `smtp://api:TOKEN@live.smtp.mailtrap.io:587`, kredensial di-URL-encode) dan `EMAIL_FROM`. Mailtrap Sandbox hanya menangkap email dan tidak mengirim ke penerima nyata; pakai Mailtrap Sending untuk pengiriman sungguhan. Isi rahasia ini hanya di `.env` di VPS.
 
+`GITHUB_CLIENT_ID` dan `GITHUB_CLIENT_SECRET` juga opsional dengan aturan pasangan yang sama; tombol "Masuk dengan GitHub" hanya muncul bila keduanya terisi. Membuat GitHub OAuth App: GitHub > Settings > Developer settings > OAuth Apps > New OAuth App. Isi Homepage URL `https://aedoxy.com` dan Authorization callback URL `https://aedoxy.com/api/auth/callback/github` (Better Auth memasang `/callback/:id` di bawah `/api/auth`). Scope yang diminta aplikasi: `read:user user:email`. Salin Client ID, lalu Generate a new client secret, dan isi keduanya di `.env` VPS. Akun GitHub hanya dipakai untuk masuk atau ditautkan bila emailnya terverifikasi di GitHub.
+
 Compose menolak nilai kosong untuk semua perintah, jadi `.env` awal berisi `CONSOLE_OIDC_CLIENT_SECRET=pending`. Jangan jalankan `web` sebelum nilai itu diganti. Salin rahasia yang tercetak ke `.env` (`CONSOLE_OIDC_CLIENT_SECRET`) dan ke pengaturan OAuth di konsol gateway. Redirect URI: `https://ai.aedoxy.com/oauth/aedoxy`. Lalu:
 
 ```sh
