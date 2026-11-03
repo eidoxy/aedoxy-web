@@ -1,11 +1,12 @@
 import { and, count, desc, eq, gt, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
-import { account, orders, session, user } from "@/server/db/schema";
+import { account, orders, passkey, session, user } from "@/server/db/schema";
 import { escapeLike } from "./admin-orders";
 import { AdminError, writeAudit, type Actor } from "./audit";
 import { bannedNowSql, isBannedNow } from "./ban-state";
 import { BAN_REASON_MAX, banUserById, unbanUserById, type BanResult } from "./ban-user";
+import { getActivePlanForUser } from "./user-plan";
 
 /** Admin reads and writes for /admin/users. Nothing here ever selects a password hash, token or 2FA secret. */
 
@@ -20,7 +21,7 @@ const yesNo = z.enum(["yes", "no"]).optional().catch(undefined);
 const querySchema = z.object({
   q: z.string().trim().max(100).optional().catch(undefined),
   role: z.enum(USER_ROLES).optional().catch(undefined),
-  status: z.enum(["active", "banned"]).optional().catch(undefined),
+  status: z.enum(["active", "banned", "terhapus"]).optional().catch(undefined),
   verified: yesNo,
   console: z.enum(["linked", "unlinked"]).optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(100_000).catch(1),
@@ -35,7 +36,8 @@ export function parseUserQuery(sp: Record<string, string | string[] | undefined>
 }
 
 function userWhere(f: UserFilter, now = new Date()): SQL | undefined {
-  const conds: SQL[] = [];
+  // Deleted accounts (tombstones) stay out of every list except the explicit "Terhapus" filter.
+  const conds: SQL[] = [f.status === "terhapus" ? isNotNull(user.deletedAt) : isNull(user.deletedAt)];
   if (f.q) {
     const like = `%${escapeLike(f.q)}%`;
     conds.push(or(ilike(user.username, like), ilike(user.email, like), ilike(user.name, like)) as SQL);
@@ -69,6 +71,7 @@ export async function listAdminUsers(filter: UserFilter, page: number, pageSize:
         twoFactorEnabled: user.twoFactorEnabled,
         banned: user.banned,
         banExpires: user.banExpires,
+        deletedAt: user.deletedAt,
         newapiUserId: user.newapiUserId,
         consoleDisabled: user.consoleDisabled,
         createdAt: user.createdAt,
@@ -81,8 +84,9 @@ export async function listAdminUsers(filter: UserFilter, page: number, pageSize:
     db.select({ n: count() }).from(user).where(where),
   ]);
   return {
-    rows: rows.map(({ banned, banExpires, newapiUserId, consoleDisabled, role, twoFactorEnabled, ...r }) => ({
+    rows: rows.map(({ banned, banExpires, deletedAt, newapiUserId, consoleDisabled, role, twoFactorEnabled, ...r }) => ({
       ...r,
+      deleted: deletedAt != null,
       role: role === "admin" ? ("admin" as const) : ("user" as const),
       twoFactorEnabled: twoFactorEnabled === true,
       banned: isBannedNow({ banned, banExpires }),
@@ -108,6 +112,7 @@ export async function getAdminUser(id: string) {
       banned: user.banned,
       banReason: user.banReason,
       banExpires: user.banExpires,
+      deletedAt: user.deletedAt,
       newapiUserId: user.newapiUserId,
       consoleDisabled: user.consoleDisabled,
       createdAt: user.createdAt,
@@ -117,9 +122,12 @@ export async function getAdminUser(id: string) {
     .limit(1);
   if (!u) return null;
 
-  const [providers, [{ n: activeSessions }], recentOrders] = await Promise.all([
+  const [providers, [{ n: activeSessions }], [{ n: passkeyCount }], [{ n: pendingOrders }], activePlan, recentOrders] = await Promise.all([
     db.selectDistinct({ providerId: account.providerId }).from(account).where(eq(account.userId, id)).orderBy(account.providerId),
     db.select({ n: count() }).from(session).where(and(eq(session.userId, id), gt(session.expiresAt, new Date()))),
+    db.select({ n: count() }).from(passkey).where(eq(passkey.userId, id)),
+    db.select({ n: count() }).from(orders).where(and(eq(orders.userId, id), eq(orders.status, "pending"))),
+    getActivePlanForUser(id),
     db
       .select({ id: orders.id, tradeNo: orders.tradeNo, status: orders.status, planName: sql<string | null>`${orders.planSnapshot}->>'name'`, createdAt: orders.createdAt })
       .from(orders)
@@ -138,17 +146,24 @@ export async function getAdminUser(id: string) {
     emailVerified: u.emailVerified,
     twoFactorEnabled: u.twoFactorEnabled === true,
     createdAt: u.createdAt,
+    deletedAt: u.deletedAt,
     ban: { active: banned, reason: banned ? u.banReason : null, expires: banned ? u.banExpires : null },
     console: consoleState(u),
     providers: providers.map((p) => p.providerId),
+    hasPassword: providers.some((p) => p.providerId === "credential"),
+    socialProviders: providers.map((p) => p.providerId).filter((p) => p !== "credential"),
+    passkeyCount,
+    pendingOrders,
+    activePlan: activePlan ? { name: activePlan.name, endsAt: activePlan.endsAt } : null,
     activeSessions,
     recentOrders,
   };
 }
 
 async function assertUserExists(id: string) {
-  const [row] = await db.select({ id: user.id }).from(user).where(eq(user.id, id)).limit(1);
+  const [row] = await db.select({ id: user.id, deletedAt: user.deletedAt }).from(user).where(eq(user.id, id)).limit(1);
   if (!row) throw new AdminError("Pengguna tidak ditemukan.");
+  if (row.deletedAt) throw new AdminError("Akun ini sudah dihapus.", "USER_DELETED");
 }
 
 /** Blocks a user (reason 1-200 characters, optional end date in the future), revokes their sessions and pushes the console. */
@@ -176,8 +191,9 @@ export async function adminSetUserRole(actor: Actor, userId: string, role: strin
 
   return db.transaction(async (tx) => {
     const admins = await tx.select({ id: user.id }).from(user).where(eq(user.role, "admin")).for("update");
-    const [row] = await tx.select({ id: user.id, role: user.role }).from(user).where(eq(user.id, userId)).for("update");
+    const [row] = await tx.select({ id: user.id, role: user.role, deletedAt: user.deletedAt }).from(user).where(eq(user.id, userId)).for("update");
     if (!row) throw new AdminError("Pengguna tidak ditemukan.");
+    if (row.deletedAt) throw new AdminError("Akun ini sudah dihapus.", "USER_DELETED");
     const before: UserRole = row.role === "admin" ? "admin" : "user";
     if (before === next) return { changed: false, role: next };
     if (before === "admin" && admins.length <= 1) throw new AdminError("Tidak bisa menurunkan admin terakhir.", "LAST_ADMIN");
