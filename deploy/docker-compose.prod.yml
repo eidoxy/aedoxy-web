@@ -161,6 +161,14 @@ services:
       NEWAPI_INTERNAL_URL: http://gateway-aedoxy:3000
       NEWAPI_BRIDGE_TOKEN: ${NEWAPI_BRIDGE_TOKEN:-}
       CONSOLE_OIDC_CLIENT_ID: ${CONSOLE_OIDC_CLIENT_ID:-aedoxy-console}
+      # Read by scripts/send-test-email.js (docker compose run --rm migrate node scripts/send-test-email.js <address>).
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_TLS: ${EMAIL_SMTP_TLS:-}
+      EMAIL_SERVER_URL: ${EMAIL_SERVER_URL:-}
     depends_on:
       postgres:
         condition: service_healthy
