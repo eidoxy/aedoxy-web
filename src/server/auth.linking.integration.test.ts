@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { db, pool as pgPool } from "@/server/db/client";
 import { account, user } from "@/server/db/schema";
 import { seedPasswordUser, signIn } from "@/server/test/auth-helpers";
+import { auth } from "@/server/auth";
 import { githubLink, githubSignIn } from "@/server/test/github-oauth";
 import { prepareDatabase, resetDatabase, seedUser } from "@/server/test/helpers";
 
@@ -79,5 +80,59 @@ describe("linking GitHub from settings", () => {
     await githubLink({ id: 56, login: "linker", email: existing.email, verified: false }, requestHeaders);
 
     expect(await accountsOf(existing.id)).toEqual([]);
+  });
+});
+
+describe("unlinking sign-in methods", () => {
+  const unlink = async (requestHeaders: Headers, accountId: string) => {
+    const res = await auth.handler(
+      new Request("https://aedoxy.test/api/auth/unlink-account", {
+        method: "POST",
+        headers: { cookie: requestHeaders.get("cookie")!, origin: "https://aedoxy.test", "content-type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      }),
+    );
+    return { status: res.status, body: (await res.json()) as { code?: string } };
+  };
+  const rowsOf = (userId: string) => db.select({ id: account.id, providerId: account.providerId }).from(account).where(eq(account.userId, userId));
+
+  it("is refused by the server for the last remaining method", async () => {
+    const u = await seedPasswordUser();
+    const { requestHeaders } = await signIn(u.email);
+    const [only] = await rowsOf(u.id);
+
+    const res = await unlink(requestHeaders, only.id);
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("FAILED_TO_UNLINK_LAST_ACCOUNT");
+    expect(await rowsOf(u.id)).toHaveLength(1);
+  });
+
+  it("works while another method remains, then protects the one left", async () => {
+    const u = await seedPasswordUser();
+    const { requestHeaders } = await signIn(u.email);
+    await githubLink({ id: 77, login: "both", email: u.email, verified: true }, requestHeaders);
+    const rows = await rowsOf(u.id);
+    expect(rows).toHaveLength(2);
+
+    const github = rows.find((r) => r.providerId === "github")!;
+    expect((await unlink(requestHeaders, github.id)).status).toBe(200);
+
+    const left = await rowsOf(u.id);
+    expect(left.map((r) => r.providerId)).toEqual(["credential"]);
+    expect((await unlink(requestHeaders, left[0].id)).body.code).toBe("FAILED_TO_UNLINK_LAST_ACCOUNT");
+  });
+
+  it("will not remove an account that belongs to someone else", async () => {
+    const a = await seedPasswordUser();
+    const b = await seedPasswordUser();
+    const { requestHeaders } = await signIn(a.email);
+    await githubLink({ id: 78, login: "a", email: a.email, verified: true }, requestHeaders);
+    const [bAccount] = await rowsOf(b.id);
+
+    const res = await unlink(requestHeaders, bAccount.id);
+
+    expect(res.status).toBe(400);
+    expect(await rowsOf(b.id)).toHaveLength(1);
   });
 });
