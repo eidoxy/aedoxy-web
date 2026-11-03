@@ -41,7 +41,7 @@ async function Security() {
         <>
           <SectionCard
             title="Autentikasi dua faktor aktif"
-            description="Aksi sensitif (ubah pool, ubah paket, coba lagi fulfillment) meminta kode 6 digit dari aplikasi autentikator Anda, atau salah satu kode cadangan."
+            description="Mengganti kredensial (kode cadangan, passkey, reset 2FA) meminta kode 6 digit dari aplikasi autentikator Anda, atau salah satu kode cadangan. Perubahan konfigurasi tidak meminta kode."
           >
             <p className="text-sm text-success">2FA aktif untuk akun ini.</p>
           </SectionCard>

@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { formatIdr } from "@/lib/format";
 import type { AdminFormState } from "@/server/admin-action";
 import { Field } from "./common";
-import { FormResult, TotpField } from "./totp-field";
+import { FormResult } from "./totp-field";
 
-/** Inline flat-price edit: a confirmation dialog with a fresh 2FA code. */
+/** Inline flat-price edit in a confirmation dialog. */
 export function PriceDialog({ planId, name, priceIdr }: { planId: number; name: string; priceIdr: number }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<AdminFormState, FormData>(async (prev, fd) => {
@@ -38,7 +38,6 @@ export function PriceDialog({ planId, name, priceIdr }: { planId: number; name: 
           <Field label="Harga flat (Rp)" htmlFor={`price-${planId}`} error={state.fieldErrors?.priceIdr?.[0]}>
             <Input id={`price-${planId}`} name="priceIdr" inputMode="numeric" defaultValue={String(priceIdr)} required className="h-9 bg-background" />
           </Field>
-          <TotpField id={`totp-price-${planId}`} />
           <FormResult error={state.error} />
           <DialogFooter>
             <Button type="submit" disabled={pending} className="h-10 px-4 text-sm font-semibold">
@@ -78,7 +77,6 @@ export function EnabledDialog({ planId, name, enabled, open, onOpenChange }: { p
         <form action={action} className="space-y-4">
           <input type="hidden" name="planId" value={planId} />
           <input type="hidden" name="enabled" value={String(!enabled)} />
-          <TotpField id={`totp-enabled-${planId}`} />
           <FormResult error={state.error} />
           <DialogFooter>
             <Button type="submit" variant={enabled ? "destructive" : "default"} disabled={pending} className="h-10 px-4 text-sm font-semibold">

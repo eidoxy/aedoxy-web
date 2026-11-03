@@ -29,7 +29,7 @@ async function SiteSettingsContent() {
       <PageHeader
         eyebrow="Admin"
         title="Pengaturan situs"
-        description="Brand, logo, kontak, pengumuman, dan contoh kode di situs publik. Setiap perubahan butuh kode 2FA, dicatat di audit log, dan tampil di situs dalam beberapa menit."
+        description="Brand, logo, kontak, pengumuman, dan contoh kode di situs publik. Setiap perubahan dicatat di audit log dan tampil di situs dalam beberapa menit."
       />
       <BrandForm initial={s} />
       <LogoSection assets={assets} hideWordmark={s.hideWordmark} brandName={s.brandName} />

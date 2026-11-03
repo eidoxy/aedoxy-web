@@ -96,7 +96,7 @@ export function PasskeyCard({ items }: { items: PasskeyItem[] }) {
   return (
     <SectionCard
       title="Passkey"
-      description="Masuk tanpa kode 2FA dengan sidik jari, wajah, atau PIN perangkat. Passkey juga bisa menggantikan kode 2FA untuk aksi sensitif. 2FA tetap wajib untuk akses admin."
+      description="Masuk tanpa kode 2FA dengan sidik jari, wajah, atau PIN perangkat. Passkey juga bisa menggantikan kode 2FA saat mengganti kredensial. 2FA tetap wajib untuk akses admin."
     >
       {items.length > 0 ? (
         <ul className="mb-6">

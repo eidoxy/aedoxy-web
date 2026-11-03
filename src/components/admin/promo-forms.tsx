@@ -10,7 +10,7 @@ import { discountedAmount, isValidPromoValue, type PromoKind } from "@/lib/disco
 import { formatIdr } from "@/lib/format";
 import type { AdminFormState } from "@/server/admin-action";
 import { Card, Field, NativeSelect } from "./common";
-import { FormResult, TotpField } from "./totp-field";
+import { FormResult } from "./totp-field";
 
 const input = "h-9 bg-background";
 
@@ -104,7 +104,6 @@ export function PromoForm({ plans }: { plans: PlanOption[] }) {
       </Card>
 
       <Card className="max-w-sm space-y-4">
-        <TotpField />
         <FormResult error={state.error} ok={state.ok} />
         <Button type="submit" disabled={pending} className="h-10 px-4 text-sm font-semibold">
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
@@ -115,7 +114,7 @@ export function PromoForm({ plans }: { plans: PlanOption[] }) {
   );
 }
 
-/** One row's "Hentikan": a confirmation dialog that asks for a fresh 2FA code before "Hentikan sekarang" submits. */
+/** One row's "Hentikan": a confirmation dialog before "Hentikan sekarang" submits. */
 export function StopPromoDialog({ promoId, name }: { promoId: number; name: string }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<AdminFormState, FormData>(async (prev, fd) => {
@@ -137,7 +136,6 @@ export function StopPromoDialog({ promoId, name }: { promoId: number; name: stri
         </DialogHeader>
         <form action={action} className="space-y-4">
           <input type="hidden" name="promoId" value={promoId} />
-          <TotpField id={`totp-stop-${promoId}`} />
           <FormResult error={state.error} />
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={pending} className="h-10 px-4 text-sm font-semibold">

@@ -30,7 +30,7 @@ export type PlanTableRow = {
   last: boolean;
 };
 
-/** One menu button per row keeps the action column narrow. Duplicate submits a plain form; enable/disable opens its 2FA dialog. */
+/** One menu button per row keeps the action column narrow. Duplicate submits a plain form; enable/disable opens its confirmation dialog. */
 function PlanActions({ plan: p }: { plan: PlanTableRow }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const duplicateForm = useRef<HTMLFormElement>(null);

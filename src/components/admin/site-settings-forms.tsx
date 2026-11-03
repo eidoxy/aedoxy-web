@@ -24,7 +24,7 @@ import { SOCIAL_LABEL, SOCIAL_PROVIDERS, type SocialProvider } from "@/lib/socia
 import { buildSnippet } from "@/lib/snippets";
 import type { AdminFormState } from "@/server/admin-action";
 import { Field } from "./common";
-import { FormResult, TotpField } from "./totp-field";
+import { FormResult } from "./totp-field";
 
 type FormAction = (prev: AdminFormState, formData: FormData) => Promise<AdminFormState>;
 
@@ -37,15 +37,13 @@ function SaveButton({ pending, label = "Simpan" }: { pending: boolean; label?: s
   );
 }
 
-/** One form per section: its own action, its own 2FA field and its own result line. */
+/** One form per section: its own action and its own result line. */
 function SectionForm({
-  id,
   title,
   description,
   action,
   children,
 }: {
-  id: string;
   title: string;
   description: string;
   action: FormAction;
@@ -56,7 +54,6 @@ function SectionForm({
     <SectionCard title={title} description={description}>
       <form action={formAction} className="space-y-4">
         {children(state.fieldErrors ?? {})}
-        <TotpField id={`totp-${id}`} />
         <FormResult error={state.error} ok={state.ok} />
         <SaveButton pending={pending} />
       </form>
@@ -68,7 +65,7 @@ const inputClass = "h-9 bg-background";
 
 export function BrandForm({ initial }: { initial: Pick<SiteSettings, "brandName" | "tagline" | "description"> }) {
   return (
-    <SectionForm id="brand" title="Brand" description="Nama dan teks yang tampil di header, judul tab, hasil pencarian, dan email." action={saveBrandAction}>
+    <SectionForm title="Brand" description="Nama dan teks yang tampil di header, judul tab, hasil pencarian, dan email." action={saveBrandAction}>
       {(fe) => (
         <>
           <Field label="Nama brand" htmlFor="brandName" hint="1 sampai 40 karakter." error={fe.brandName?.[0]}>
@@ -139,7 +136,6 @@ function AssetForm({ kind, asset, brandName }: { kind: AssetKind; asset?: AssetI
           }}
         />
       </Field>
-      <TotpField id={`totp-${kind}`} />
       <FormResult error={state.error} ok={state.ok} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={pending || Boolean(clientError)} className="h-10 px-4 text-sm font-semibold">
@@ -170,7 +166,6 @@ export function LogoSection({ assets, hideWordmark, brandName }: { assets: Parti
             </label>
             <Switch id="hideWordmark" name="hideWordmark" defaultChecked={hideWordmark} />
           </div>
-          <TotpField id="totp-logo-options" />
           <FormResult error={state.error} ok={state.ok} />
           <SaveButton pending={pending} />
         </form>
@@ -182,7 +177,6 @@ export function LogoSection({ assets, hideWordmark, brandName }: { assets: Parti
 export function ContactForm({ initial }: { initial: Pick<SiteSettings, "companyName" | "companyAddress" | "supportEmail" | "whatsappUrl" | "telegramUrl"> }) {
   return (
     <SectionForm
-      id="contact"
       title="Identitas dan kontak"
       description="Nama badan usaha, alamat, dan email mengisi tiga bagian di halaman Syarat, Privasi, dan Refund yang masih kosong."
       action={saveContactAction}
@@ -218,7 +212,6 @@ export function SocialForm({ initial, configured }: { initial: Pick<SiteSettings
   const [on, setOn] = useState<Record<SocialProvider, boolean>>({ google: initial.googleLoginEnabled, github: initial.githubLoginEnabled });
   return (
     <SectionForm
-      id="social"
       title="Login sosial"
       description="Tombol Masuk dan Daftar dengan Google atau GitHub. Server menolak penyedia yang dimatikan, bukan hanya menyembunyikan tombolnya."
       action={saveSocialAction}
@@ -255,7 +248,7 @@ export function AnnouncementForm({ initial }: { initial: SiteSettings["announcem
   const err = (fe: Record<string, string[] | undefined>, k: string) => fe[k]?.[0];
 
   return (
-    <SectionForm id="announcement" title="Pengumuman" description="Bar di atas halaman publik. Pengunjung yang menutupnya melihatnya lagi bila teks atau tautan berubah." action={saveAnnouncementAction}>
+    <SectionForm title="Pengumuman" description="Bar di atas halaman publik. Pengunjung yang menutupnya melihatnya lagi bila teks atau tautan berubah." action={saveAnnouncementAction}>
       {(fe) => (
         <>
           <div className="flex items-center justify-between gap-4">
@@ -300,7 +293,7 @@ export function DocsForm({ initial }: { initial: Pick<SiteSettings, "apiBaseUrl"
   const [apiBaseUrl, setApiBaseUrl] = useState(initial.apiBaseUrl);
   const [sampleModel, setSampleModel] = useState(initial.sampleModel);
   return (
-    <SectionForm id="docs" title="Dokumentasi" description="Base URL API publik dan nama model yang dipakai pada contoh kode di situs." action={saveDocsAction}>
+    <SectionForm title="Dokumentasi" description="Base URL API publik dan nama model yang dipakai pada contoh kode di situs." action={saveDocsAction}>
       {(fe) => (
         <>
           <Field label="Base URL API publik" htmlFor="apiBaseUrl" hint="https, tanpa /v1 di ujung. http hanya untuk localhost." error={fe.apiBaseUrl?.[0]}>

@@ -9,13 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import type { AdminFormState } from "@/server/admin-action";
 import { SectionCard } from "@/components/console/section-card";
 import { Field, NativeSelect } from "./common";
-import { FormResult, TotpField } from "./totp-field";
+import { FormResult } from "./totp-field";
 
 export function AdjustPoolForm() {
   const [state, action, pending] = useActionState<AdminFormState, FormData>(adjustPoolAction, {});
   const fe = state.fieldErrors ?? {};
   return (
-    <SectionCard title="Tambah / kurangi stok" description="Setiap perubahan tercatat di ledger dan audit log, dan meminta kode 2FA.">
+    <SectionCard title="Tambah / kurangi stok" description="Setiap perubahan tercatat di ledger dan audit log.">
       <form action={action} className="max-w-xl space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Aksi" htmlFor="direction">
@@ -31,7 +31,6 @@ export function AdjustPoolForm() {
         <Field label="Catatan" htmlFor="note" hint="Wajib. Contoh: top up upstream Anthropic, invoice #123." error={fe.note?.[0]}>
           <Textarea id="note" name="note" required maxLength={300} rows={2} className="bg-background" />
         </Field>
-        <TotpField />
         <FormResult error={state.error} ok={state.ok} />
         <Button type="submit" disabled={pending} className="h-10 px-4 text-sm font-semibold">
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
@@ -53,7 +52,6 @@ export function ThresholdForm({ currentUsd }: { currentUsd: number }) {
         <Field label="Ambang (USD)" htmlFor="thresholdUsd" error={state.fieldErrors?.thresholdUsd?.[0]}>
           <Input id="thresholdUsd" name="thresholdUsd" inputMode="decimal" defaultValue={String(currentUsd)} required className="h-9 bg-background" />
         </Field>
-        <TotpField id="totp-threshold" />
         <FormResult error={state.error} ok={state.ok} />
         <Button type="submit" variant="outline" disabled={pending} className="h-10 px-4 text-sm font-semibold">
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}

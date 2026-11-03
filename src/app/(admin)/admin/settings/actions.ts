@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { ASSET_KINDS, ASSET_LABEL, ASSET_RULES, ImageError, inspectImage, type AssetKind } from "@/lib/image-check";
 import { announcementSchema, brandSchema, contactSchema, docsSchema, logoOptionsSchema, socialSchema, type SiteSection, type SiteSettings } from "@/lib/schemas/site";
-import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
+import { getAdminActor, requireAdmin } from "@/server/admin";
 import { formStrings, toActionError, type AdminFormState } from "@/server/admin-action";
 import { resetSiteAsset, saveSiteAsset, saveSiteSection } from "@/server/domain/site-settings";
 
@@ -15,14 +15,13 @@ function refresh() {
 
 type Fields = Record<string, string>;
 
-/** Shared by every text section: guard, validate, fresh 2FA, save + audit, expire the cache. */
+/** Shared by every text section: guard, validate, save + audit, expire the cache. */
 async function saveSection(section: SiteSection, schema: z.ZodType<Partial<SiteSettings>>, formData: FormData, toRaw: (f: Fields) => unknown, ok: string): Promise<AdminFormState> {
   const session = await requireAdmin();
   const fields = formStrings(formData);
   const parsed = schema.safeParse(toRaw(fields));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   try {
-    await requireFreshTotp(fields.totp ?? "");
     await saveSiteSection(await getAdminActor(session), section, parsed.data);
   } catch (err) {
     return toActionError(err);
@@ -83,7 +82,6 @@ export async function uploadSiteAssetAction(_prev: AdminFormState, formData: For
     throw err;
   }
   try {
-    await requireFreshTotp(String(formData.get("totp") ?? ""));
     await saveSiteAsset(await getAdminActor(session), kind, bytes, info);
   } catch (err) {
     return toActionError(err);
@@ -97,7 +95,6 @@ export async function resetSiteAssetAction(_prev: AdminFormState, formData: Form
   const kind = kindOf(formData.get("kind"));
   if (!kind) return { error: "Jenis gambar tidak dikenal." };
   try {
-    await requireFreshTotp(String(formData.get("totp") ?? ""));
     const changed = await resetSiteAsset(await getAdminActor(session), kind);
     if (!changed) return { ok: `${ASSET_LABEL[kind]} sudah memakai gambar bawaan.` };
   } catch (err) {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AdminFormState } from "@/server/admin-action";
 import { Card, Field, NativeSelect } from "./common";
-import { FormResult, TotpField } from "./totp-field";
+import { FormResult } from "./totp-field";
 
 const input = "h-9 bg-background";
 
@@ -153,7 +153,6 @@ export function PlanForm({ planId, values, enabled, sold, groups }: { planId?: n
       )}
 
       <Card className="max-w-sm space-y-4">
-        <TotpField />
         <FormResult error={state.error} ok={state.ok} />
         <div className="flex flex-wrap gap-2">
           <Button type="submit" name="intent" value="save" disabled={pending} className="h-10 px-4 text-sm font-semibold">

@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
-import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
+import { getAdminActor, requireAdmin } from "@/server/admin";
 import { formStrings, toActionError, type AdminFormState } from "@/server/admin-action";
 import { adminRefreshFx, updateFxSettings } from "@/server/domain/fx-rate";
 
@@ -22,7 +22,6 @@ const settingsInput = z.object({
   refreshHours: z.coerce.number().int().min(1, "Minimal 1 jam.").max(168, "Maksimal 168 jam."),
   roundingStepIdr: z.enum(["1", "100"]).transform((s) => Number(s) as 1 | 100),
   showConversion: z.literal("on").optional(),
-  totp: z.string().default(""),
 });
 
 export async function saveFxSettingsAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
@@ -30,7 +29,6 @@ export async function saveFxSettingsAction(_prev: AdminFormState, formData: Form
   const parsed = settingsInput.safeParse(formStrings(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   try {
-    await requireFreshTotp(parsed.data.totp);
     const { mode, manualRateIdr, refreshHours, roundingStepIdr, showConversion } = parsed.data;
     await updateFxSettings(await getAdminActor(session), { mode, manualRateIdr, refreshHours, roundingStepIdr, showConversion: showConversion === "on" });
   } catch (err) {
@@ -40,7 +38,7 @@ export async function saveFxSettingsAction(_prev: AdminFormState, formData: Form
   return { ok: "Pengaturan kurs disimpan." };
 }
 
-/** No fresh 2FA (it only fetches public quotes), but it still needs an admin and is audited. */
+/** Only fetches public quotes; needs an admin and is audited. */
 export async function refreshFxAction(): Promise<AdminFormState> {
   const session = await requireAdmin();
   let message: string;

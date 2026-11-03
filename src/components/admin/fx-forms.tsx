@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AdminFormState } from "@/server/admin-action";
 import { Card, Field, NativeSelect } from "./common";
-import { FormResult, TotpField } from "./totp-field";
+import { FormResult } from "./totp-field";
 
 export function FxSettingsForm({
   initial,
@@ -45,7 +45,6 @@ export function FxSettingsForm({
           <input type="checkbox" name="showConversion" defaultChecked={initial.showConversion} className="size-4 accent-primary" />
           Tampilkan konversi rupiah
         </label>
-        <TotpField />
         <FormResult error={state.error} ok={state.ok} />
         <Button type="submit" disabled={pending} className="h-10 px-4 text-sm font-semibold">
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
