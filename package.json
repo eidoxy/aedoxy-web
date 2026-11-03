@@ -15,6 +15,8 @@
     "db:seed-catalog": "bun scripts/seed-catalog.ts",
     "db:make-admin": "bun scripts/make-admin.ts",
     "db:reset-2fa": "bun scripts/reset-2fa.ts",
+    "db:ban-user": "bun scripts/ban-user.ts",
+    "db:unban-user": "bun scripts/unban-user.ts",
     "worker": "bun src/worker/index.ts"
   },
   "dependencies": {

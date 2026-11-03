@@ -23,7 +23,7 @@ RUN bun run build
 # pg-native is an optional `pg` dependency that is never installed here.
 RUN mkdir -p out/scripts \
  && bun build --target=node --production --format=cjs --external pg-native --outfile out/scripts/worker.js src/worker/index.ts \
- && for s in migrate make-admin reset-2fa seed-catalog seed-oauth-client send-test-email; do \
+ && for s in migrate make-admin reset-2fa ban-user unban-user seed-catalog seed-oauth-client send-test-email; do \
       bun build --target=node --production --format=cjs --external pg-native --outfile "out/scripts/$s.js" "scripts/$s.ts"; \
     done
 

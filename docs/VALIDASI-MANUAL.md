@@ -84,6 +84,12 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 - [ ] Dari `/dashboard`, "Buka Console" masuk tanpa meminta login ulang.
 - [ ] Keluar dari console lalu masuk lagi lewat tombol "Aedoxy" lima kali berturut-turut: tidak ada "429".
 - [ ] Buat API key di console, lalu pakai di `/docs` contoh cURL: respons 200 bila kredit ada.
+- [ ] Daftar user baru dengan username yang sudah dipakai user console lama (jalankan worker): akun console-nya mendapat nama acak, dan login/Buka Console tetap berjalan.
+- [ ] Ban di aedoxy.com (`bun run db:ban-user <email> alasan`, atau di produksi `scripts/ban-user.js` lewat compose): sesi web berakhir, sesi console tertutup, dan API key user ditolak. Skrip mencetak `console: dinonaktifkan`.
+- [ ] Hentikan console, jalankan ban lagi: skrip mencetak `console: tertunda, worker akan mengulang`. Nyalakan console, tunggu sekitar 1 menit: worker menonaktifkannya dan log `sync-console-status` tidak lagi melapor gagal.
+- [ ] Unban (`bun run db:unban-user <email>`): user bisa masuk dan membuat API key lagi di console, dan API key lama berfungsi kembali.
+- [ ] Ban user yang berperan Admin di console: aedoxy mencatat ban, console menolak (409), dan log worker menampilkan `protected:http:409`. Akun console-nya tetap aktif.
+- [ ] User terverifikasi tanpa akun console (kosongkan `newapi_user_id` di DB dev, console boleh dimatikan sementara saat verifikasi): setelah console hidup, worker `link-console-accounts` menautkannya dalam sekitar 2 menit tanpa menekan "Buka Console".
 
 ### B6. Webhook Poketo asli (hanya lewat tunnel)
 - [ ] Jalankan tunnel, buat pembayaran sandbox sungguhan, dan pastikan webhook masuk dan order terpenuhi tanpa skrip simulasi.

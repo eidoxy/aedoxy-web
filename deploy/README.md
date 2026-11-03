@@ -102,9 +102,13 @@ sudo docker compose ps
 sudo docker compose logs -f --tail=100 web worker
 sudo docker compose run --rm migrate node scripts/make-admin.js <email>
 sudo docker compose run --rm migrate node scripts/reset-2fa.js <email>
+sudo docker compose run --rm migrate node scripts/ban-user.js <email> [alasan]   # keluarkan sesi, nonaktifkan akun console
+sudo docker compose run --rm migrate node scripts/unban-user.js <email>
 sudo docker compose run --rm migrate node scripts/seed-catalog.js
 sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # NODE_ENV=production: rahasia baru dicetak ke stdout
 ```
+
+`ban-user` mencetak `console: dinonaktifkan` bila console sudah mengikuti, atau `console: tertunda, worker akan mengulang` bila bridge gagal (ban tetap berlaku di aedoxy.com, worker `sync-console-status` mengulang tiap menit). Admin atau Root di console dilindungi bridge (HTTP 409): ban tetap tercatat, tetapi akun console-nya tidak dinonaktifkan dan worker mencatat `protected:http:409` tiap menit sampai peran itu diturunkan di console.
 
 `SEED_OAUTH_OUT=<path>` menulis rahasia ke berkas, `SEED_OAUTH_OUT=-` memaksa stdout. Rahasia hanya muncul sekali saat klien dibuat (tersimpan sebagai hash).
 

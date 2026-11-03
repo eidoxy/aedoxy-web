@@ -46,7 +46,7 @@
 | D1 | **aedoxy.com memegang commerce**: katalog paket, harga flat, diskon, order, pembayaran, pool, kurs tampilan, dan feed. **New API memegang kredit dan pemakaian**: subscription aktif, pemotongan kredit, dan expiry. | Provider Poketo di dalam fork Go (rancangan sebelumnya). Ditolak karena panel dan admin sekarang dibangun terpisah di Next.js. |
 | D2 | **Satu-satunya produk adalah paket subscription bawaan New API.** `SubscriptionPlan` sudah punya durasi `hour/day/month/year/custom`, `TotalAmount`, `AllowWalletOverflow`, `UpgradeGroup`, `MaxPurchasePerUser`, dan job `ExpireDueSubscriptions`. Next.js menyimpan harga flat rupiah dan diskon, lalu memetakan setiap paket ke `newapi_plan_id`. Saldo dompet New API tidak diisi. | (a) Top up per dolar (pay as you go). Ditolak sesuai keputusan pemilik produk. (b) Ember kredit berjangka buatan sendiri. Ditolak karena kredit dipotong di relay New API, sehingga Next.js tidak bisa menegakkan "hangus" tanpa mengubah jalur relay. |
 | D3 | **aedoxy.com menjadi identity provider (OIDC)** lewat plugin [OAuth 2.1 Provider Better Auth](https://better-auth.com/docs/plugins/oauth-provider) dengan scope `openid`. New API memakai fitur Custom OAuth Provider (`model/custom_oauth_provider.go`, mendukung discovery `well_known`) sebagai satu-satunya cara login user. | (a) Login Google terpisah di kedua aplikasi. Ditolak karena user harus login dua kali, berisiko punya akun ganda, dan tidak mendukung email/password. (b) Next.js login dengan password New API. Ditolak karena password akan melewati aplikasi kedua. |
-| D4 | **Tambahan kecil di fork Go ("bridge")**: dua endpoint, yaitu `accounts/ensure` dan `fulfill` yang idempoten berdasarkan `trade_no`. Detailnya di bagian 7. | Hanya memakai `POST /api/subscription/admin/bind`. Ditolak karena endpoint ini **tidak idempoten** (retry setelah timeout memberi paket dua kali) dan tidak mengembalikan ID subscription. Selain itu, New API tidak menyediakan pencarian user berdasarkan `sub` OAuth. |
+| D4 | **Tambahan kecil di fork Go ("bridge")**: tiga endpoint, yaitu `accounts/ensure`, `accounts/status`, dan `fulfill` yang idempoten berdasarkan `trade_no`. Detailnya di bagian 7. | Hanya memakai `POST /api/subscription/admin/bind`. Ditolak karena endpoint ini **tidak idempoten** (retry setelah timeout memberi paket dua kali) dan tidak mengembalikan ID subscription. Selain itu, New API tidak menyediakan pencarian user berdasarkan `sub` OAuth. |
 | D5 | **Pool di DB aedoxy** dalam satuan kuota New API (`quota_per_unit`, default 500.000 = $1). Kredit paket direservasi saat order dibuat, dipindah ke terjual saat lunas, dan dilepas saat order kedaluwarsa. Sisa kredit dikembalikan ke pool setelah paket hangus. | Pool di New API. Ditolak karena keputusan menjual atau tidak menjual ada di sisi commerce. |
 | D6 | **Paket diaktifkan lewat outbox + worker.** Webhook hanya mencatat status lunas dan membuat baris `fulfillments` dalam satu transaksi. Worker memanggil bridge dengan retry. | Memanggil New API langsung di dalam webhook. Ditolak karena Poketo menunggu balasan maksimal 10 detik, dan jika console sedang down paket akan hilang tanpa jejak. |
 | D7 | **Kurs hanya untuk tampilan.** Kurs disimpan di aedoxy (mode manual atau otomatis; sumber Frankfurter/ECB, cadangan open.er-api) dan hanya dipakai untuk keterangan "≈ Rp" di panel dan katalog. Nominal pembayaran selalu harga flat paket. | Menghitung harga dari kurs. Ditolak karena harga ditetapkan flat oleh admin. |
@@ -149,15 +149,37 @@ Semua endpoint berada di bawah `/api/aedoxy` dan memakai `middleware.AdminAuth()
 
 ```json
 // request
-{ "subject": "usr_8f2c...", "email": "rina@example.com", "display_name": "Rina" }
+{ "subject": "usr_8f2c...", "email": "rina@example.com", "display_name": "Rina", "username": "rina_01" }
 // response
-{ "user_id": 123, "username": "aedoxy_123", "created": true }
+{ "user_id": 123, "username": "rina_01", "created": true }
 ```
 
 1. Ambil custom OAuth provider dengan slug `aedoxy`.
-2. `GetUserByOAuthBinding(providerId, subject)`. Jika ada, kembalikan user tersebut.
-3. Jika belum ada: dalam satu transaksi, buat user (pola yang sama dengan `findOrCreateOAuthUser`: username = prefix provider + ID, password acak, grup default, kuota 0) lalu `CreateUserOAuthBindingWithTx`.
+2. `GetUserByOAuthBinding(providerId, subject)`. Jika ada, kembalikan user tersebut (username yang dikirim diabaikan).
+3. Jika belum ada: dalam satu transaksi, buat user (password acak, grup default, kuota 0) lalu `CreateUserOAuthBindingWithTx`. `username` bersifat opsional dan harus cocok `^[a-z0-9_]{3,20}$`. Bila kosong, atau sudah dipakai user console lain, console memakai nama acak (prefix provider + ID). Nama yang dipakai dikembalikan di `data.username`.
 4. Jika dua request datang bersamaan, unique index `ux_provider_userid` menolak yang kedua. Tangani dengan membaca ulang binding, lalu kembalikan `created: false`.
+
+aedoxy mengirim `username` dari kolom `user.username` (tidak dikirim bila kosong, mis. akun lama). Username console bukan sumber kebenaran: nama yang dikembalikan tidak disimpan di aedoxy, dan nama berbeda tidak memutus alur.
+
+**`POST /api/aedoxy/accounts/status`** (scope `user:write`)
+
+```json
+// request
+{ "subject": "usr_8f2c...", "enabled": false }
+// response
+{ "user_id": 123, "enabled": false, "changed": true }
+```
+
+`enabled` wajib boolean. Idempoten: `changed: false` bila status sudah sesuai. Menonaktifkan mencabut sesi console dan membuat API key ditolak. Galat: 404 bila `subject` belum pernah di-ensure, 409 bila mencoba menonaktifkan user console berperan Admin atau Root (dilindungi). Respons gagal berbentuk `{ "success": false, "message": "..." }`.
+
+Sisi aedoxy menyelaraskan status ini lewat kolom `user.console_disabled` (status terakhir yang berhasil didorong ke console):
+- "Banned efektif" berarti `banned = true` dan (`ban_expires` kosong atau masih di depan). Satu definisi ini (`src/server/domain/ban-state.ts`) dipakai di mana pun.
+- Worker `sync-console-status` (tiap menit, maksimal 50 user) memanggil `accounts/status` untuk user yang punya `newapi_user_id` dan `console_disabled` berbeda dari status banned efektif, lalu mengisi `console_disabled`. Dengan begitu ban dan unban pasti sampai walau panggilan pertama gagal. Ban yang berakhir sendiri lewat `ban_expires` ikut terdorong lewat worker yang sama.
+- 404 saat menonaktifkan berarti tidak ada akun console untuk dimatikan, jadi dianggap selaras. 404 saat mengaktifkan memanggil `accounts/ensure` dulu.
+- 409 tidak ditandai selaras: user tetap terlihat tidak selaras dan worker mencatat `protected:http:409` setiap siklus.
+- Worker `link-console-accounts` (tiap 2 menit, maksimal 20 user) menautkan user terverifikasi dan tidak banned yang masih tanpa `newapi_user_id`, sebagai jaring pengaman bila panggilan `ensure` saat daftar atau verifikasi gagal.
+- `/admin/remove-user` Better Auth ditutup, karena menghapus baris user menghilangkan `subject` sehingga akun console tidak bisa dinonaktifkan lagi.
+- Operator memakai `scripts/ban-user.ts` dan `scripts/unban-user.ts` (audit `user.ban` dan `user.unban`).
 
 **`POST /api/aedoxy/fulfill`** (scope `billing:write`)
 
