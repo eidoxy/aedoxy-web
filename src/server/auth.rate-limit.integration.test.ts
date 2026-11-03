@@ -30,7 +30,7 @@ describe("Better Auth rate limit storage", () => {
     expect(auth.options.rateLimit).toMatchObject({ enabled: true, storage: "database", window: 60, max: 100 });
     const rules = auth.options.rateLimit?.customRules;
     expect(rules?.["/sign-in/email"]).toEqual({ window: 60, max: 5 });
-    for (const path of ["/oauth2/token", "/oauth2/userinfo", "/jwks"]) expect(rules?.[path]).toEqual({ window: 60, max: 600 });
+    for (const path of ["/oauth2/token", "/oauth2/userinfo", "/jwks"] as const) expect(rules?.[path]).toEqual({ window: 60, max: 600 });
   });
 
   it("limits /sign-in/email to 5 per minute per IP, keeps the counter in Postgres and survives a new auth instance", async () => {
