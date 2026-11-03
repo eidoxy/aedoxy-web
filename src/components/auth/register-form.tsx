@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormMessage, TextField } from "@/components/auth/auth-ui";
+import { SocialButtons } from "@/components/auth/social-buttons";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { PASSWORD_MIN, registerSchema, type RegisterValues } from "@/lib/schemas/auth";
+import type { SocialProvider } from "@/lib/social";
 
-export function RegisterForm() {
+export function RegisterForm({ providers }: { providers: SocialProvider[] }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string>();
   const {
@@ -38,40 +40,43 @@ export function RegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-1">
-      <TextField
-        id="username"
-        label="Username"
-        autoComplete="username"
-        autoCapitalize="none"
-        spellCheck={false}
-        hint="3 sampai 20 karakter: huruf kecil, angka, dan garis bawah (_)."
-        error={errors.username?.message}
-        {...register("username")}
-      />
-      <TextField
-        id="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        inputMode="email"
-        error={errors.email?.message}
-        {...register("email")}
-      />
-      <TextField
-        id="password"
-        label="Kata sandi"
-        type="password"
-        autoComplete="new-password"
-        hint={`Minimal ${PASSWORD_MIN} karakter.`}
-        error={errors.password?.message}
-        {...register("password")}
-      />
-      <FormMessage tone="error">{formError}</FormMessage>
-      <Button type="submit" disabled={isSubmitting} className="mt-2 h-11 w-full text-sm font-semibold">
-        {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        {isSubmitting ? "Memproses..." : "Daftar"}
-      </Button>
-    </form>
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-1">
+        <TextField
+          id="username"
+          label="Username"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          hint="3 sampai 20 karakter: huruf kecil, angka, dan garis bawah (_)."
+          error={errors.username?.message}
+          {...register("username")}
+        />
+        <TextField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          error={errors.email?.message}
+          {...register("email")}
+        />
+        <TextField
+          id="password"
+          label="Kata sandi"
+          type="password"
+          autoComplete="new-password"
+          hint={`Minimal ${PASSWORD_MIN} karakter.`}
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        <FormMessage tone="error">{formError}</FormMessage>
+        <Button type="submit" disabled={isSubmitting} className="mt-2 h-11 w-full text-sm font-semibold">
+          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          {isSubmitting ? "Memproses..." : "Daftar"}
+        </Button>
+      </form>
+      <SocialButtons providers={providers} verb="Daftar" onError={setFormError} />
+    </>
   );
 }

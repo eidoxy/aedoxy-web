@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeInternalPath, signedInDestination } from "./auth-redirect";
+import { oidcCarryQuery, safeInternalPath, signedInDestination } from "./auth-redirect";
 
 describe("safeInternalPath", () => {
   it("keeps same-site paths", () => {
@@ -49,5 +49,17 @@ describe("signedInDestination", () => {
 
   it("stays on the page for a console OIDC request", () => {
     expect(signedInDestination({ client_id: "aedoxy-console", sig: "abc", callbackURL: "/orders" })).toBeNull();
+  });
+});
+
+describe("oidcCarryQuery", () => {
+  it("carries the signed query, repeated keys included, and drops page-level messages", () => {
+    const q = oidcCarryQuery({ client_id: "c", ba_param: ["client_id", "sig"], sig: "abc", error: "x", reset: "1" });
+    expect(q).toBe("?client_id=c&ba_param=client_id&ba_param=sig&sig=abc");
+  });
+
+  it("adds nothing outside an OIDC request", () => {
+    expect(oidcCarryQuery({})).toBe("");
+    expect(oidcCarryQuery({ reset: "1", next: "/plans" })).toBe("");
   });
 });

@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormMessage, TextField } from "@/components/auth/auth-ui";
+import { SocialButtons } from "@/components/auth/social-buttons";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { signInErrorMessage } from "@/lib/auth-messages";
 import { isEmailIdentifier, loginSchema, type LoginValues } from "@/lib/schemas/auth";
+import type { SocialProvider } from "@/lib/social";
 
-export function LoginForm({ googleEnabled, githubEnabled, initialError }: { googleEnabled: boolean; githubEnabled: boolean; initialError?: string }) {
+export function LoginForm({ providers, initialError }: { providers: SocialProvider[]; initialError?: string }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | undefined>(initialError);
   const [needsCode, setNeedsCode] = useState(false);
@@ -58,57 +60,40 @@ export function LoginForm({ googleEnabled, githubEnabled, initialError }: { goog
     router.refresh();
   }
 
-  async function social(provider: "google" | "github", label: string) {
-    setFormError(undefined);
-    // A failed provider round trip comes back to this page (keeping the signed OIDC query) with ?error=, shown by the login page.
-    const back = new URLSearchParams(window.location.search);
-    back.delete("error");
-    back.delete("error_description");
-    const { error } = await authClient.signIn.social({ provider, callbackURL: "/dashboard", errorCallbackURL: `/login${back.size ? `?${back}` : ""}` });
-    if (error) setFormError(signInErrorMessage(error, `Masuk dengan ${label} gagal. Coba lagi.`));
-  }
-
   if (needsCode) return <TwoFactorStep />;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-1">
-      <TextField
-        id="identifier"
-        label="Username atau email"
-        autoComplete="username"
-        autoCapitalize="none"
-        spellCheck={false}
-        error={errors.identifier?.message}
-        {...register("identifier")}
-      />
-      <TextField
-        id="password"
-        label="Kata sandi"
-        type="password"
-        autoComplete="current-password"
-        error={errors.password?.message}
-        {...register("password")}
-      />
-      <FormMessage tone="error">{formError}</FormMessage>
-      <Button type="submit" disabled={isSubmitting} className="mt-2 h-11 w-full text-sm font-semibold">
-        {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        {isSubmitting ? "Memproses..." : "Masuk"}
-      </Button>
-      <Button type="button" variant="outline" onClick={passkey} disabled={passkeyBusy || isSubmitting} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
-        {passkeyBusy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Masuk dengan passkey
-      </Button>
-      {googleEnabled && (
-        <Button type="button" variant="outline" onClick={() => social("google", "Google")} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
-          Masuk dengan Google
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-1">
+        <TextField
+          id="identifier"
+          label="Username atau email"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          error={errors.identifier?.message}
+          {...register("identifier")}
+        />
+        <TextField
+          id="password"
+          label="Kata sandi"
+          type="password"
+          autoComplete="current-password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        <FormMessage tone="error">{formError}</FormMessage>
+        <Button type="submit" disabled={isSubmitting} className="mt-2 h-11 w-full text-sm font-semibold">
+          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          {isSubmitting ? "Memproses..." : "Masuk"}
         </Button>
-      )}
-      {githubEnabled && (
-        <Button type="button" variant="outline" onClick={() => social("github", "GitHub")} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
-          Masuk dengan GitHub
+        <Button type="button" variant="outline" onClick={passkey} disabled={passkeyBusy || isSubmitting} className="mt-2 h-11 w-full bg-surface text-sm font-semibold">
+          {passkeyBusy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          Masuk dengan passkey
         </Button>
-      )}
-    </form>
+      </form>
+      <SocialButtons providers={providers} verb="Masuk" onError={setFormError} />
+    </>
   );
 }
 

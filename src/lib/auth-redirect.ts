@@ -18,3 +18,17 @@ export function signedInDestination(params: Params): string | null {
   if (params.sig !== undefined) return null;
   return safeInternalPath(params.callbackURL) ?? safeInternalPath(params.next) ?? "/dashboard";
 }
+
+/**
+ * "?query" to append to the link between /login and /register while the console's OIDC request is in flight, so the signed query
+ * (`sig`, `ba_param`, ...) survives the hop and a social sign-in on the other page still continues to the console. Empty otherwise.
+ */
+export function oidcCarryQuery(params: Params): string {
+  if (params.sig === undefined) return "";
+  const out = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (k === "error" || k === "error_description" || k === "reset") continue;
+    for (const item of Array.isArray(v) ? v : v === undefined ? [] : [v]) out.append(k, item);
+  }
+  return `?${out}`;
+}

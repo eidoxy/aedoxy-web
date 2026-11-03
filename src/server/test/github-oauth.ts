@@ -21,12 +21,12 @@ function stubGithub(p: GithubProfile) {
 
 const cookieHeader = (setCookie: string[]) => setCookie.map((c) => c.split(";")[0]).join("; ");
 
-/** Completes the OAuth round trip. Returns the callback response, where `Location` is either the callbackURL or an error URL. */
+/** Completes the OAuth round trip, as a browser navigation (sec-fetch-mode: navigate; the OIDC plugin answers navigations with a redirect and everything else with JSON). Returns the callback response, where `Location` is either the callbackURL or an error URL. */
 async function callback(startUrl: string, startCookies: string[], extraCookie: string | undefined) {
   const state = new URL(startUrl).searchParams.get("state");
   if (!state) throw new Error("no state in the authorization URL");
   const cookie = [cookieHeader(startCookies), extraCookie].filter(Boolean).join("; ");
-  return auth.handler(new Request(`https://aedoxy.test/api/auth/callback/github?code=test-code&state=${state}`, { headers: { cookie } }));
+  return auth.handler(new Request(`https://aedoxy.test/api/auth/callback/github?code=test-code&state=${state}`, { headers: { cookie, "sec-fetch-mode": "navigate" } }));
 }
 
 type SignInOptions = {

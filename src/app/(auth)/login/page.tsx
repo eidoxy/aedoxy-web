@@ -4,9 +4,11 @@ import { Suspense } from "react";
 import { AuthCard, AuthCardFallback } from "@/components/auth/auth-ui";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignedInGate } from "@/components/auth/signed-in-gate";
-import { env } from "@/env";
+
 import { socialErrorMessage } from "@/lib/auth-messages";
+import { oidcCarryQuery } from "@/lib/auth-redirect";
 import { getSiteSettings } from "@/server/site";
+import { getSocialProviders } from "@/server/social-providers";
 
 export const metadata: Metadata = { title: "Masuk" };
 
@@ -21,9 +23,9 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 }
 
 async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
-  const [{ reset, error }, { brandName }] = await Promise.all([searchParams, getSiteSettings()]);
-  const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
-  const githubEnabled = Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
+  const [params, { brandName }, providers] = await Promise.all([searchParams, getSiteSettings(), getSocialProviders()]);
+  const { reset, error } = params;
+  const carry = oidcCarryQuery(params);
   return (
     <AuthCard
       title="Masuk"
@@ -31,7 +33,7 @@ async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">
       footer={
         <p>
           Belum punya akun?{" "}
-          <Link href="/register" className="font-medium text-primary-ink underline-offset-4 hover:underline">
+          <Link href={`/register${carry}`} className="font-medium text-primary-ink underline-offset-4 hover:underline">
             Daftar
           </Link>
           {" · "}
@@ -41,7 +43,7 @@ async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">
         </p>
       }
     >
-      <LoginForm googleEnabled={googleEnabled} githubEnabled={githubEnabled} initialError={socialErrorMessage(error)} />
+      <LoginForm providers={providers} initialError={socialErrorMessage(error)} />
     </AuthCard>
   );
 }
