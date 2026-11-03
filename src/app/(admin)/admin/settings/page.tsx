@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AnnouncementForm, BrandForm, ContactForm, DocsForm, LogoSection, type AssetInfo } from "@/components/admin/site-settings-forms";
+import { AnnouncementForm, BrandForm, ContactForm, DocsForm, LogoSection, SocialForm, type AssetInfo } from "@/components/admin/site-settings-forms";
 import { PageHeader } from "@/components/console/page-header";
 import { FormPageSkeleton } from "@/components/console/skeletons";
 import type { AssetKind } from "@/lib/image-check";
 import { requireAdmin } from "@/server/admin";
 import { loadSiteSettings } from "@/server/domain/site-settings";
+import { configuredSocialProviders } from "@/server/social-providers";
 
 export const metadata: Metadata = { title: "Pengaturan situs" };
 
@@ -33,6 +34,7 @@ async function SiteSettingsContent() {
       <BrandForm initial={s} />
       <LogoSection assets={assets} hideWordmark={s.hideWordmark} brandName={s.brandName} />
       <ContactForm initial={s} />
+      <SocialForm initial={s} configured={configuredSocialProviders()} />
       <AnnouncementForm initial={s.announcement} />
       <DocsForm initial={s} />
     </div>

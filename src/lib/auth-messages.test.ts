@@ -47,6 +47,10 @@ describe("signInErrorMessage", () => {
     expect(signInErrorMessage({}, fallback)).toBe(fallback);
   });
 
+  it("shows the server's text for a switched-off provider", () => {
+    expect(signInErrorMessage({ code: "SOCIAL_LOGIN_DISABLED", message: "Login dengan GitHub sedang dinonaktifkan." }, fallback)).toBe("Login dengan GitHub sedang dinonaktifkan.");
+  });
+
   it("tells a rate limit apart", () => {
     expect(signInErrorMessage({ status: 429 }, fallback)).toMatch(/Terlalu banyak/);
   });

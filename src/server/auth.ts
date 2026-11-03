@@ -17,6 +17,7 @@ import { rejectUnverifiedOAuthEmail } from "@/server/oauth-email-guard";
 import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyGate, passkeyPlugin } from "@/server/passkey-policy";
 import { sessionOptions } from "@/server/session-config";
 import { sessionTrust } from "@/server/session-trust-plugin";
+import { socialGate } from "@/server/social-gate";
 import { getBrandName } from "@/server/site";
 import { assignGeneratedUsername } from "@/server/username";
 
@@ -165,6 +166,7 @@ export const auth = betterAuth({
     twoFactor({ issuer: "Aedoxy" }),
     passkeyPlugin(baseURL),
     passkeyGate(),
+    socialGate(),
     // bannedUserMessage runs when a session is created for a banned user, i.e. after the password/passkey/provider was accepted.
     admin({ defaultRole: "user", adminRoles: ["admin"], bannedUserMessage: (u) => bannedMessage(u) }),
     sessionTrust(),

@@ -64,6 +64,9 @@ export const contactSchema = z.object({
   telegramUrl: optionalHttps("Tautan Telegram"),
 });
 
+/** Both default to on: a provider shows up as soon as its credentials are set in the server env. */
+export const socialSchema = z.object({ googleLoginEnabled: z.boolean(), githubLoginEnabled: z.boolean() });
+
 export const announcementBase = z.object({
   enabled: z.boolean(),
   text: str(140, 0, "Teks pengumuman"),
@@ -101,6 +104,7 @@ export const docsSchema = z.object({
 export const siteSettingsSchema = brandSchema
   .extend(logoOptionsSchema.shape)
   .extend(contactSchema.shape)
+  .extend(socialSchema.shape)
   .extend({ announcement: announcementBase })
   .extend({ apiBaseUrl: z.string(), sampleModel: z.string() });
 
@@ -121,13 +125,14 @@ export function mergeSiteSettings(stored: unknown, defaults: SiteSettings): Site
   return { ...defaults, ...defined, announcement: { ...defaults.announcement, ...ann } };
 }
 
-export type SiteSection = "brand" | "logo" | "contact" | "announcement" | "docs";
+export type SiteSection = "brand" | "logo" | "contact" | "social" | "announcement" | "docs";
 
 /** Fields each section owns; the audit row lists only these. */
 export const SECTION_FIELDS: Record<SiteSection, readonly (keyof SiteSettings)[]> = {
   brand: ["brandName", "tagline", "description"],
   logo: ["hideWordmark"],
   contact: ["companyName", "companyAddress", "supportEmail", "whatsappUrl", "telegramUrl"],
+  social: ["googleLoginEnabled", "githubLoginEnabled"],
   announcement: ["announcement"],
   docs: ["apiBaseUrl", "sampleModel"],
 };

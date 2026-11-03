@@ -9,10 +9,10 @@ import { LinkedAccountsCard } from "@/components/panel/linked-accounts-card";
 import { CopyButton } from "@/components/panel/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { SessionTrustForm } from "@/components/panel/session-trust-form";
-import { env } from "@/env";
 import { getShowActivity } from "@/server/domain/activity";
 import { hasPasswordLogin } from "@/server/domain/session-trust";
 import { requireSession } from "@/server/session";
+import { getSocialProviders } from "@/server/social-providers";
 import { getSiteSettings } from "@/server/site";
 
 export const metadata: Metadata = { title: "Pengaturan" };
@@ -27,11 +27,8 @@ export default function SettingsPage() {
 
 async function Settings() {
   const { user, session } = await requireSession();
-  const [show, passwordLogin, { brandName }] = await Promise.all([getShowActivity(user.id), hasPasswordLogin(user.id), getSiteSettings()]);
-  // Which social logins exist is decided here, on the server; the card only receives the names.
-  const providers = [env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && "google", env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET && "github"].filter(
-    (p): p is "google" | "github" => Boolean(p),
-  );
+  // Which social logins can be linked is decided here, on the server (env credentials AND the admin switch); the card only receives the names.
+  const [show, passwordLogin, { brandName }, providers] = await Promise.all([getShowActivity(user.id), hasPasswordLogin(user.id), getSiteSettings(), getSocialProviders()]);
   const trustedAt = (session as { trustedAt?: Date | null }).trustedAt;
   return (
     <div className="space-y-6">

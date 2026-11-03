@@ -9,6 +9,8 @@ else delete process.env.DATABASE_URL;
 
 process.env.ENV_STRICT = "false";
 // Dummy provider credentials so the social providers exist; the tests answer the provider HTTP calls themselves.
+process.env.GOOGLE_CLIENT_ID = "google-test-id";
+process.env.GOOGLE_CLIENT_SECRET = "google-test-secret";
 process.env.GITHUB_CLIENT_ID = "gh-test-id";
 process.env.GITHUB_CLIENT_SECRET = "gh-test-secret";
 process.env.NEXT_PUBLIC_SITE_URL = "https://aedoxy.test";

@@ -9,6 +9,7 @@ import {
   saveContactAction,
   saveDocsAction,
   saveLogoOptionsAction,
+  saveSocialAction,
   uploadSiteAssetAction,
 } from "@/app/(admin)/admin/settings/actions";
 import { LogoMark } from "@/components/brand/logo";
@@ -19,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ASSET_KINDS, ASSET_LABEL, ASSET_RULES, type AssetKind } from "@/lib/image-check";
 import type { SiteSettings } from "@/lib/schemas/site";
+import { SOCIAL_LABEL, SOCIAL_PROVIDERS, type SocialProvider } from "@/lib/social";
 import { buildSnippet } from "@/lib/snippets";
 import type { AdminFormState } from "@/server/admin-action";
 import { Field } from "./common";
@@ -202,6 +204,43 @@ export function ContactForm({ initial }: { initial: Pick<SiteSettings, "companyN
           <Field label="Tautan Telegram" htmlFor="telegramUrl" hint="URL https, misalnya https://t.me/namaakun." error={fe.telegramUrl?.[0]}>
             <Input id="telegramUrl" name="telegramUrl" inputMode="url" defaultValue={initial.telegramUrl} maxLength={300} className={inputClass} />
           </Field>
+        </>
+      )}
+    </SectionForm>
+  );
+}
+
+/**
+ * Google and GitHub switches. `configured` is decided on the server from env; a provider without credentials cannot be switched.
+ * The values travel in hidden inputs ("on"/"off"), because a disabled switch posts nothing and would be read as off.
+ */
+export function SocialForm({ initial, configured }: { initial: Pick<SiteSettings, "googleLoginEnabled" | "githubLoginEnabled">; configured: SocialProvider[] }) {
+  const [on, setOn] = useState<Record<SocialProvider, boolean>>({ google: initial.googleLoginEnabled, github: initial.githubLoginEnabled });
+  return (
+    <SectionForm
+      id="social"
+      title="Login sosial"
+      description="Tombol Masuk dan Daftar dengan Google atau GitHub. Server menolak penyedia yang dimatikan, bukan hanya menyembunyikan tombolnya."
+      action={saveSocialAction}
+    >
+      {() => (
+        <>
+          {SOCIAL_PROVIDERS.map((p) => {
+            const ready = configured.includes(p);
+            return (
+              <div key={p} className="flex items-center justify-between gap-4">
+                <label htmlFor={`social-${p}`} className="text-sm text-heading">
+                  {SOCIAL_LABEL[p]}
+                  {!ready && <span className="block text-xs text-faint">Belum dikonfigurasi di server ({p.toUpperCase()}_*). Isi kredensialnya di env lalu deploy ulang.</span>}
+                </label>
+                <input type="hidden" name={`${p}LoginEnabled`} value={on[p] ? "on" : "off"} />
+                <Switch id={`social-${p}`} checked={on[p]} disabled={!ready} onCheckedChange={(v) => setOn((prev) => ({ ...prev, [p]: v }))} />
+              </div>
+            );
+          })}
+          <p className="text-xs text-faint">
+            Mematikan penyedia membuat pengguna yang hanya punya metode itu tidak bisa masuk sampai saklarnya dinyalakan lagi. Menautkan akun dari halaman Pengaturan pengguna juga ikut tertutup; melepas tautan tetap bisa.
+          </p>
         </>
       )}
     </SectionForm>

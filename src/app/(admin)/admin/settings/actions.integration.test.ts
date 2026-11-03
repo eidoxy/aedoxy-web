@@ -31,7 +31,7 @@ import { db, pool as pgPool } from "@/server/db/client";
 import { adminAuditLog, siteAssets } from "@/server/db/schema";
 import { loadSiteSettings } from "@/server/domain/site-settings";
 import { prepareDatabase, resetDatabase } from "@/server/test/helpers";
-import { resetSiteAssetAction, saveAnnouncementAction, saveBrandAction, saveDocsAction, saveLogoOptionsAction, uploadSiteAssetAction } from "./actions";
+import { resetSiteAssetAction, saveAnnouncementAction, saveBrandAction, saveDocsAction, saveLogoOptionsAction, saveSocialAction, uploadSiteAssetAction } from "./actions";
 
 beforeAll(prepareDatabase);
 afterAll(() => pgPool.end());
@@ -96,6 +96,20 @@ describe("text sections", () => {
   });
 });
 
+describe("social login switches", () => {
+  it("default to on, save with 2FA, audit under site.social and expire the tag", async () => {
+    expect(await loadSiteSettings()).toMatchObject({ googleLoginEnabled: true, githubLoginEnabled: true });
+    expect(await saveSocialAction({}, form({ googleLoginEnabled: "on", githubLoginEnabled: "off", totp: "000000" }))).toEqual({ error: "Kode 2FA salah." });
+    expect(await loadSiteSettings()).toMatchObject({ githubLoginEnabled: true });
+
+    expect(await saveSocialAction({}, form({ googleLoginEnabled: "on", githubLoginEnabled: "off", totp: "123456" }))).toEqual({ ok: "Login sosial disimpan." });
+
+    expect(await loadSiteSettings()).toMatchObject({ googleLoginEnabled: true, githubLoginEnabled: false });
+    expect(current.tags).toContain("site-settings");
+    const [row] = await db.select().from(adminAuditLog);
+    expect(row).toMatchObject({ actorId: "admin-1", action: "site.social", before: { googleLoginEnabled: true, githubLoginEnabled: true }, after: { googleLoginEnabled: true, githubLoginEnabled: false } });
+  });
+});
 describe("image upload", () => {
   it("stores a valid PNG; the audit row has hash and size, never the bytes; the client file name is ignored", async () => {
     const r = await uploadSiteAssetAction({}, form({ kind: "logo", file: file(png(128, 64), "../../evil.php"), totp: "123456" }));

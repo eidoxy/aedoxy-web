@@ -3,7 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { ASSET_KINDS, ASSET_LABEL, ASSET_RULES, ImageError, inspectImage, type AssetKind } from "@/lib/image-check";
-import { announcementSchema, brandSchema, contactSchema, docsSchema, logoOptionsSchema, type SiteSection, type SiteSettings } from "@/lib/schemas/site";
+import { announcementSchema, brandSchema, contactSchema, docsSchema, logoOptionsSchema, socialSchema, type SiteSection, type SiteSettings } from "@/lib/schemas/site";
 import { getAdminActor, requireAdmin, requireFreshTotp } from "@/server/admin";
 import { formStrings, toActionError, type AdminFormState } from "@/server/admin-action";
 import { resetSiteAsset, saveSiteAsset, saveSiteSection } from "@/server/domain/site-settings";
@@ -41,6 +41,17 @@ export async function saveLogoOptionsAction(_prev: AdminFormState, formData: For
 
 export async function saveContactAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   return saveSection("contact", contactSchema, formData, (f) => f, "Identitas dan kontak disimpan.");
+}
+
+/** The form posts "on"/"off" in hidden inputs: a switch that is disabled (provider not configured) would otherwise be absent and read as off. */
+export async function saveSocialAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  return saveSection(
+    "social",
+    socialSchema,
+    formData,
+    () => ({ googleLoginEnabled: formData.get("googleLoginEnabled") === "on", githubLoginEnabled: formData.get("githubLoginEnabled") === "on" }),
+    "Login sosial disimpan.",
+  );
 }
 
 export async function saveAnnouncementAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {

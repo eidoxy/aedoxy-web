@@ -27,6 +27,8 @@ export function siteDefaults(): SiteSettings {
     supportEmail: "",
     whatsappUrl: "",
     telegramUrl: "",
+    googleLoginEnabled: true,
+    githubLoginEnabled: true,
     announcement: { enabled: false, text: "", href: "", linkLabel: "" },
     apiBaseUrl: site.apiBaseUrl.replace(/\/+$/, ""),
     sampleModel: DEFAULT_SAMPLE_MODEL,

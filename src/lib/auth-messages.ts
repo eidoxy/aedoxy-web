@@ -1,3 +1,5 @@
+import { SOCIAL_DISABLED_CODE } from "@/lib/social";
+
 /** User-facing auth messages (Indonesian). Pure: used by the server (ban message) and by the client forms. */
 
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -32,6 +34,7 @@ export const RATE_LIMITED_MESSAGE = "Terlalu banyak percobaan. Tunggu sebentar l
 export function signInErrorMessage(error: { code?: string; status?: number; message?: string }, fallback: string): string {
   if (error.status === 429) return RATE_LIMITED_MESSAGE;
   if (error.code === "BANNED_USER") return error.message?.trim() || bannedMessage({});
+  if (error.code === SOCIAL_DISABLED_CODE && error.message) return error.message;
   return fallback;
 }
 

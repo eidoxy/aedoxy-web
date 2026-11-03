@@ -29,10 +29,35 @@ async function callback(startUrl: string, startCookies: string[], extraCookie: s
   return auth.handler(new Request(`https://aedoxy.test/api/auth/callback/github?code=test-code&state=${state}`, { headers: { cookie } }));
 }
 
-export async function githubSignIn(p: GithubProfile) {
+type SignInOptions = {
+  /** The signed query of an OIDC request (what the client plugin sends as `oauth_query` from /login?...&sig=...). Goes through the HTTP handler, like the browser. */
+  oauthQuery?: string;
+  /** Runs between "redirect to GitHub" and "back from GitHub", e.g. to switch the provider off mid round trip. */
+  beforeCallback?: () => Promise<void>;
+};
+
+async function startSignIn(oauthQuery: string | undefined) {
+  if (!oauthQuery) {
+    const { headers, response } = await auth.api.signInSocial({ body: { provider: "github", callbackURL: "/dashboard", errorCallbackURL: "/login" }, returnHeaders: true });
+    return { url: response.url!, cookies: headers.getSetCookie() };
+  }
+  const res = await auth.handler(
+    new Request("https://aedoxy.test/api/auth/sign-in/social", {
+      method: "POST",
+      headers: { origin: "https://aedoxy.test", "content-type": "application/json" },
+      body: JSON.stringify({ provider: "github", callbackURL: "/dashboard", errorCallbackURL: "/login", oauth_query: oauthQuery }),
+    }),
+  );
+  const body = (await res.json()) as { url?: string };
+  if (!body.url) throw new Error(`social sign-in did not start: HTTP ${res.status}`);
+  return { url: body.url, cookies: res.headers.getSetCookie() };
+}
+
+export async function githubSignIn(p: GithubProfile, opts: SignInOptions = {}) {
   stubGithub(p);
-  const { headers, response } = await auth.api.signInSocial({ body: { provider: "github", callbackURL: "/dashboard", errorCallbackURL: "/login" }, returnHeaders: true });
-  const res = await callback(response.url!, headers.getSetCookie(), undefined);
+  const start = await startSignIn(opts.oauthQuery);
+  await opts.beforeCallback?.();
+  const res = await callback(start.url, start.cookies, undefined);
   const location = res.headers.get("location") ?? "";
   const setCookie = res.headers.getSetCookie();
   const sessionCookie = setCookie.map((c) => c.split(";")[0]).find((c) => c.startsWith("better-auth.session_token="));
