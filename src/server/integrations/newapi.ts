@@ -35,7 +35,8 @@ export class NewApiError extends Error {
   }
 }
 
-export type EnsureConsoleAccountInput = { subject: string; email: string; displayName: string };
+/** `username` is a preference: the console falls back to a random name when it is taken, and that name is not stored here. */
+export type EnsureConsoleAccountInput = { subject: string; email: string; displayName: string; username?: string };
 export type ConsoleAccount = { userId: number; username: string; created: boolean };
 
 /** Sends one authenticated request to New API and returns the parsed JSON body. */
@@ -309,6 +310,7 @@ export async function ensureConsoleAccount(input: EnsureConsoleAccountInput): Pr
     subject: input.subject,
     email: input.email,
     display_name: input.displayName,
+    ...(input.username ? { username: input.username } : {}),
   });
   const parsed = ensureResponse.safeParse(json);
   if (!parsed.success) throw new NewApiError("invalid_response", "Bridge response has an unexpected shape", status);
@@ -316,4 +318,29 @@ export async function ensureConsoleAccount(input: EnsureConsoleAccountInput): Pr
 
   const { user_id, username, created } = parsed.data.data;
   return { userId: user_id, username, created };
+}
+
+const statusResponse = z.union([
+  z.object({
+    success: z.literal(true),
+    data: z.object({ user_id: z.number().int().positive(), enabled: z.boolean(), changed: z.boolean() }),
+  }),
+  z.object({ success: z.literal(false), message: z.string().optional() }),
+]);
+
+export type ConsoleAccountStatus = { userId: number; enabled: boolean; changed: boolean };
+
+/**
+ * Enables or disables the console user bound to `subject`. Idempotent (`changed` is false when nothing moved).
+ * HTTP 404 means the subject was never ensured and 409 means the console user is an Admin/Root (protected);
+ * both surface as NewApiError kind "http" with `status` set, so callers can tell them apart.
+ */
+export async function setConsoleAccountEnabled(subject: string, enabled: boolean): Promise<ConsoleAccountStatus> {
+  const { json, status } = await call("POST", "/api/aedoxy/accounts/status", { subject, enabled });
+  const parsed = statusResponse.safeParse(json);
+  if (!parsed.success) throw new NewApiError("invalid_response", "Bridge response has an unexpected shape", status);
+  if (!parsed.data.success) throw new NewApiError("rejected", "Bridge rejected the request", status);
+
+  const { user_id, enabled: now, changed } = parsed.data.data;
+  return { userId: user_id, enabled: now, changed };
 }

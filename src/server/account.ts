@@ -18,6 +18,8 @@ export async function ensureConsoleAccountForUser(userId: string): Promise<numbe
     subject: row.id,
     email: row.email,
     displayName: row.name,
+    // null for accounts created before usernames existed; the console then picks a name.
+    username: row.username ?? undefined,
   });
   await db.update(user).set({ newapiUserId: account.userId }).where(eq(user.id, row.id));
   return account.userId;

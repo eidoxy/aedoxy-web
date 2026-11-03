@@ -37,6 +37,16 @@ describe("ensureConsoleAccount", () => {
     expect(JSON.parse(init.body as string)).toEqual({ subject: "user-1", email: "a@b.co", display_name: "Ada" });
   });
 
+  it("sends username only when present", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => json({ success: true, data: { user_id: 42, username: "ada_1", created: true } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await ensureConsoleAccount({ ...input, username: "ada_1" });
+    await ensureConsoleAccount({ ...input, username: "" });
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(bodies[0]).toMatchObject({ username: "ada_1" });
+    expect(bodies[1]).not.toHaveProperty("username");
+  });
+
   it("fails with not_configured when the URL or token is missing", async () => {
     mockEnv.NEWAPI_BRIDGE_TOKEN = undefined;
     expect((await failure()).kind).toBe("not_configured");

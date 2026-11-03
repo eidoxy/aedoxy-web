@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type Row = { id: string; email: string; name: string; emailVerified: boolean; newapiUserId: number | null };
+type Row = { id: string; email: string; name: string; emailVerified: boolean; newapiUserId: number | null; username: string | null };
 const state = vi.hoisted(() => ({ row: undefined as Row | undefined }));
 const updateSet = vi.hoisted(() => vi.fn());
 
@@ -31,7 +31,7 @@ import { ensureConsoleAccountForUser } from "./account";
 describe("ensureConsoleAccountForUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    state.row = { id: "u1", email: "a@b.co", name: "Ada", emailVerified: true, newapiUserId: null };
+    state.row = { id: "u1", email: "a@b.co", name: "Ada", emailVerified: true, newapiUserId: null, username: "ada_1" };
     ensureConsoleAccount.mockResolvedValue({ userId: 7, username: "aedoxy_1", created: true });
   });
 
@@ -39,9 +39,15 @@ describe("ensureConsoleAccountForUser", () => {
     await expect(ensureConsoleAccountForUser("u1")).resolves.toBe(7);
     await expect(ensureConsoleAccountForUser("u1")).resolves.toBe(7);
     expect(ensureConsoleAccount).toHaveBeenCalledTimes(1);
-    expect(ensureConsoleAccount).toHaveBeenCalledWith({ subject: "u1", email: "a@b.co", displayName: "Ada" });
+    expect(ensureConsoleAccount).toHaveBeenCalledWith({ subject: "u1", email: "a@b.co", displayName: "Ada", username: "ada_1" });
     expect(updateSet).toHaveBeenCalledTimes(1);
     expect(updateSet).toHaveBeenCalledWith({ newapiUserId: 7 });
+  });
+
+  it("sends no username for an account created before usernames existed", async () => {
+    state.row!.username = null;
+    await ensureConsoleAccountForUser("u1");
+    expect(ensureConsoleAccount).toHaveBeenCalledWith({ subject: "u1", email: "a@b.co", displayName: "Ada", username: undefined });
   });
 
   it("does nothing for an unverified or missing user", async () => {
