@@ -34,8 +34,28 @@ describe("creditCost (formula from gateway-aedoxy text_quota.go)", () => {
   });
 
   it("does not convert billing expressions or models closed to the default group", () => {
-    expect(creditCost(item("tiered-model"), pricing.groupRatio)).toEqual({ kind: "unsupported", reason: "billing expression" });
+    expect(creditCost(item("tiered-model"), pricing.groupRatio)).toEqual({ kind: "unsupported", reason: "billing expression (no price from gateway)" });
     expect(creditCost(item("vip-only"), pricing.groupRatio)).toMatchObject({ kind: "unsupported" });
+  });
+
+  it("expression billing: gateway base price x default group ratio, with the dynamic flag", () => {
+    const prices = new Map([["tiered-model", { inputUsdPerM: 0.112, outputUsdPerM: 0.336, dynamic: true }]]);
+    expect(creditCost(item("tiered-model"), { default: 1 }, prices)).toEqual({ kind: "tokens", inputUsdPerM: 0.112, outputUsdPerM: 0.336, dynamic: true });
+    expect(creditCost(item("tiered-model"), { default: 1.5 }, prices)).toEqual({ kind: "tokens", inputUsdPerM: 0.168, outputUsdPerM: 0.504, dynamic: true });
+    expect(creditCost(item("tiered-model"), {}, prices)).toMatchObject({ inputUsdPerM: 0.112 }); // unknown group costs x1
+  });
+
+  it("expression billing without a gateway price, or closed to the default group, stays unsupported", () => {
+    expect(creditCost(item("tiered-model"), pricing.groupRatio, new Map())).toEqual({ kind: "unsupported", reason: "billing expression (no price from gateway)" });
+    const prices = new Map([["tiered-model", { inputUsdPerM: 1, outputUsdPerM: 2, dynamic: false }]]);
+    const closed = { ...item("tiered-model"), enable_groups: ["vip"] };
+    expect(creditCost(closed, pricing.groupRatio, prices)).toMatchObject({ kind: "unsupported", reason: "not enabled for group default" });
+    expect(creditCost({ ...item("tiered-model"), enable_groups: ["all"] }, { default: -1 }, prices).kind).toBe("unsupported");
+  });
+
+  it("ignores expression prices for models that are not billed by expression", () => {
+    const prices = new Map([["gpt-4o", { inputUsdPerM: 99, outputUsdPerM: 99, dynamic: true }]]);
+    expect(creditCost(item("gpt-4o"), pricing.groupRatio, prices)).toEqual({ kind: "tokens", inputUsdPerM: 2.5, outputUsdPerM: 10 });
   });
 
   it("rejects negative or unknown pricing instead of computing a wrong price", () => {
@@ -77,6 +97,15 @@ describe("buildCatalog", () => {
     expect(models.find((m) => m.id === "tiered-model")).toMatchObject({ creditInputUsdPerM: null, creditOutputUsdPerM: null, creditPerRequestUsd: null });
     expect(unsupported.map((u) => u.model)).toEqual(["tiered-model", "vip-only"]);
     expect(providers.map((p) => p.name)).toEqual(["Anthropic", "Midjourney", "OpenAI", "Lainnya"].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("fills credit price and creditDynamic for expression models from the gateway prices", () => {
+    const prices = new Map([["tiered-model", { inputUsdPerM: 0.112, outputUsdPerM: 0.336, dynamic: true }]]);
+    const { models, unsupported } = buildCatalog(pricing, [], prices);
+    expect(models.find((m) => m.id === "tiered-model")).toMatchObject({ creditInputUsdPerM: 0.112, creditOutputUsdPerM: 0.336, creditPerRequestUsd: null, creditDynamic: true });
+    expect(models.find((m) => m.id === "gpt-4o")?.creditDynamic).toBe(false);
+    expect(unsupported.map((u) => u.model)).toEqual(["vip-only"]);
+    expect(outputPerPlan(models.find((m) => m.id === "tiered-model")!, 20)).toEqual({ unit: "token", count: Math.floor(20 / 0.336 * 1_000_000) });
   });
 
   it("hides models marked invisible and uses the admin's provider over the vendor", () => {

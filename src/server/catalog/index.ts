@@ -3,14 +3,14 @@ import { db } from "@/server/db/client";
 import { modelMeta } from "@/server/db/schema";
 import { getPublicActivity } from "@/server/domain/activity";
 import { getDisplayFx } from "@/server/domain/fx-rate";
-import { fetchPricing } from "@/server/integrations/newapi";
+import { fetchExpressionPrices, fetchPricing, NewApiError, type ExpressionPrice } from "@/server/integrations/newapi";
 import { buildCatalog, type BuiltCatalog } from "./models";
 import { loadPlans } from "./plans";
 import type { Model, Plan, Provider, RankingEntry, Stats } from "./types";
 
 export type * from "./types";
 
-// F08: public pages are cached; models refresh hourly, plans/fx/activity sooner.
+// F08: public pages are cached; models refresh every 10 minutes, plans/fx/activity sooner.
 
 const warn = (what: string, err: unknown) => console.warn(`[catalog] ${what}`, err instanceof Error ? err.message : "unknown");
 
@@ -26,6 +26,18 @@ export async function getPlans(): Promise<Plan[]> {
   }
 }
 
+/** Optional input: a failure (e.g. an old gateway answering 404) only leaves expression models without a price. */
+async function loadExpressionPrices(): Promise<Map<string, ExpressionPrice>> {
+  try {
+    return await fetchExpressionPrices();
+  } catch (err) {
+    const status = err instanceof NewApiError && err.status ? ` (HTTP ${err.status})` : "";
+    const hint = err instanceof NewApiError && err.status === 404 ? ": upgrade gateway" : "";
+    console.warn(`[catalog] expression prices unavailable${status}${hint}`, err instanceof Error ? err.message : "unknown");
+    return new Map();
+  }
+}
+
 export type Catalog = Pick<BuiltCatalog, "models" | "providers"> & {
   /** ok = fresh from New API; stale = New API unreachable, last good data shown; unavailable = nothing to show. */
   state: "ok" | "stale" | "unavailable";
@@ -35,23 +47,24 @@ export type Catalog = Pick<BuiltCatalog, "models" | "providers"> & {
 let lastGood: Pick<BuiltCatalog, "models" | "providers"> | null = null;
 
 /**
- * Models + providers: New API GET /api/pricing merged with model_meta, cached for an hour.
- * When New API cannot be reached the last good data is returned, and a short cache window keeps
- * the failure from sticking for an hour. /admin/models expires the "models" tag.
+ * Models + providers: New API GET /api/pricing merged with model_meta and the gateway's expression prices, refreshed
+ * every 10 minutes (expression prices can follow the time of day). When New API cannot be reached the last good data
+ * is returned, and a short cache window keeps the failure from sticking. /admin/models expires the "models" tag.
  */
 export async function getCatalog(): Promise<Catalog> {
   "use cache";
   cacheTag("models");
   try {
-    const [pricing, metas] = await Promise.all([fetchPricing(), db.select().from(modelMeta)]);
-    const built = buildCatalog(pricing, metas);
+    const [pricing, metas, expressionPrices] = await Promise.all([fetchPricing(), db.select().from(modelMeta), loadExpressionPrices()]);
+    const built = buildCatalog(pricing, metas, expressionPrices);
     if (pricing.skipped > 0) console.warn(`[catalog] ${pricing.skipped} pricing entries had an unexpected shape and were skipped`);
     if (built.unsupported.length > 0) {
       const reasons = [...new Set(built.unsupported.map((u) => u.reason))].join("; ");
       console.warn(`[catalog] credit cost not shown for ${built.unsupported.length} model(s): ${reasons}`);
     }
     lastGood = { models: built.models, providers: built.providers };
-    cacheLife("hours");
+    // An empty list is almost always a transient New API state, so it must not stick for 10 minutes. expire >= 5 min, see below.
+    cacheLife(built.models.length === 0 ? { stale: 30, revalidate: 30, expire: 300 } : { stale: 300, revalidate: 600, expire: 3600 });
     return { ...lastGood, state: "ok" };
   } catch (err) {
     warn("models unavailable", err);

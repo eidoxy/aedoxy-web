@@ -31,7 +31,7 @@ Pola gutsai: tabel per provider dengan kolom model, context (input/output), kema
 
 | Data | Sumber |
 |---|---|
-| Daftar model, vendor, rasio harga, grup yang boleh | `GET /api/pricing` New API, cache 1 jam |
+| Daftar model, vendor, rasio harga, grup yang boleh | `GET /api/pricing` New API (+ `GET /api/aedoxy/model-prices` untuk model berekspresi), cache 10 menit |
 | Context window, kemampuan, harga resmi | Metadata yang diisi admin di aedoxy (tabel `model_meta`), karena New API tidak menyimpan data ini secara lengkap |
 | Biaya pemakaian | **Kredit $ per 1 juta token** dari rasio model New API. Rumusnya harus diverifikasi untuk setiap mode harga New API (rasio, harga tetap, billing expression). Jangan dikonversi ke rupiah dengan kurs pasar, karena kredit $ dibeli lewat harga flat paket, bukan dengan kurs. Konversi itu akan membuat model tampak jauh lebih mahal daripada kenyataannya |
 | Harga resmi | $ per 1 juta token, boleh diberi konversi "≈ Rp" (F04) karena nilainya memang dolar sungguhan |

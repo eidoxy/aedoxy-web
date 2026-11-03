@@ -227,6 +227,7 @@ Sesuai `gateway-aedoxy/AGENTS.md`: transaksi ini wajib diuji di SQLite, MySQL, d
 |---|---|---|
 | `GET /api/status` | publik | `quota_per_unit`, info sistem |
 | `GET /api/pricing` | tergantung pengaturan modul nav | Katalog model (F08) |
+| `GET /api/aedoxy/model-prices` | `billing:read` | Harga dasar (USD per 1 juta token, tanpa rasio grup) model berekspresi `tiered_expr` di katalog `/models`. Dihitung oleh mesin billing gateway; web tidak mem-parse ekspresi, hanya mengalikan rasio grup `default`. `dynamic: true` berarti harga mengikuti jam/hari, tampil dengan catatan "harga saat ini". Gateway lama membalas 404: katalog tetap tampil, model berekspresi tampil "-" (peringatan `[catalog] expression prices unavailable` di log). Katalog di-cache 10 menit (30 detik bila daftar model kosong) |
 | `GET /api/subscription/admin/users/:id/subscriptions` | `billing:read` | Paket aktif dan sisa kredit di panel, rekonsiliasi sisa kredit |
 | `GET/POST/PUT/PATCH /api/subscription/admin/plans` | `billing:read/write` | Sinkronisasi paket (F05) |
 | `POST /api/subscription/admin/user_subscriptions/:id/invalidate` | `billing:write` | Refund manual |

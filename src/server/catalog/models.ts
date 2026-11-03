@@ -1,5 +1,5 @@
 import { creditCost } from "@/lib/model-cost";
-import type { NewApiPricing } from "@/server/integrations/newapi";
+import type { ExpressionPrice, NewApiPricing } from "@/server/integrations/newapi";
 import type { Capability, Model, Provider } from "./types";
 
 /** Merge of New API's model list (cost) with the admin's model_meta (context, capabilities, official prices). */
@@ -37,7 +37,7 @@ const num = (v: string | null) => {
   return Number.isFinite(n) ? n : null;
 };
 
-export function buildCatalog(pricing: NewApiPricing, metas: MetaRow[]): BuiltCatalog {
+export function buildCatalog(pricing: NewApiPricing, metas: MetaRow[], expressionPrices?: ReadonlyMap<string, ExpressionPrice>): BuiltCatalog {
   const metaByName = new Map(metas.map((m) => [m.modelName, m]));
   const providerNames = new Map<string, string>();
   const unsupported: BuiltCatalog["unsupported"] = [];
@@ -57,7 +57,7 @@ export function buildCatalog(pricing: NewApiPricing, metas: MetaRow[]): BuiltCat
     if (vendorName !== undefined && providerSlug(vendorName) === providerId) providerNames.set(providerId, vendorName);
     else if (!providerNames.has(providerId)) providerNames.set(providerId, rawName);
 
-    const cost = creditCost(item, pricing.groupRatio);
+    const cost = creditCost(item, pricing.groupRatio, expressionPrices);
     if (cost.kind === "unsupported") unsupported.push({ model: item.model_name, reason: cost.reason });
 
     models.push({
@@ -73,6 +73,7 @@ export function buildCatalog(pricing: NewApiPricing, metas: MetaRow[]): BuiltCat
       creditInputUsdPerM: cost.kind === "tokens" ? cost.inputUsdPerM : null,
       creditOutputUsdPerM: cost.kind === "tokens" ? cost.outputUsdPerM : null,
       creditPerRequestUsd: cost.kind === "request" ? cost.usdPerRequest : null,
+      creditDynamic: cost.kind === "tokens" && cost.dynamic === true,
     });
   }
 

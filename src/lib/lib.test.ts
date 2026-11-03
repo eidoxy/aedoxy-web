@@ -27,6 +27,7 @@ const model = (over: Partial<Model> = {}): Model => ({
   creditInputUsdPerM: 1,
   creditOutputUsdPerM: 1,
   creditPerRequestUsd: null,
+  creditDynamic: false,
   ...over,
 });
 

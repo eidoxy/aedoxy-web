@@ -212,6 +212,7 @@ export function ModelsCatalog({
         <span className="block text-fg-soft">
           {formatUsd(m.creditOutputUsdPerM)} <span className="text-faint">out</span>
         </span>
+        {m.creditDynamic && <span className="block text-[11px] text-fg-muted">harga saat ini</span>}
       </>
     ) : m.creditPerRequestUsd !== null ? (
       <>

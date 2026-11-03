@@ -261,6 +261,39 @@ export async function fetchPricing(): Promise<NewApiPricing> {
   };
 }
 
+const expressionPriceEntry = z.object({
+  model_name: z.string().min(1),
+  input_usd_per_m: z.number().finite().nonnegative(),
+  output_usd_per_m: z.number().finite().nonnegative(),
+  dynamic: z.boolean().default(false),
+});
+
+const expressionPricesResponse = z.union([
+  z.object({ success: z.literal(true), data: z.object({ models: z.array(z.unknown()).nullish() }) }),
+  z.object({ success: z.literal(false), message: z.string().optional() }),
+]);
+
+export type ExpressionPrice = { inputUsdPerM: number; outputUsdPerM: number; dynamic: boolean };
+
+/**
+ * GET /api/aedoxy/model-prices (scope billing:read): base USD per 1M tokens of models billed by an expression,
+ * computed by the gateway's own billing engine, without group ratio. `dynamic` = the price depends on the time of day.
+ * An old gateway answers 404 (NewApiError kind "http", status 404). Invalid entries are dropped.
+ */
+export async function fetchExpressionPrices(): Promise<Map<string, ExpressionPrice>> {
+  const { json, status } = await call("GET", "/api/aedoxy/model-prices");
+  const parsed = expressionPricesResponse.safeParse(json);
+  if (!parsed.success) throw new NewApiError("invalid_response", "Bridge response has an unexpected shape", status);
+  if (!parsed.data.success) throw new NewApiError("rejected", "Bridge rejected the request", status);
+
+  const prices = new Map<string, ExpressionPrice>();
+  for (const raw of parsed.data.data.models ?? []) {
+    const e = expressionPriceEntry.safeParse(raw);
+    if (e.success) prices.set(e.data.model_name, { inputUsdPerM: e.data.input_usd_per_m, outputUsdPerM: e.data.output_usd_per_m, dynamic: e.data.dynamic });
+  }
+  return prices;
+}
+
 const fulfillResponse = z.union([
   z.object({
     success: z.literal(true),

@@ -4,7 +4,7 @@ const TOKEN = "sk-test-bridge-token-123";
 const mockEnv = vi.hoisted(() => ({}) as { NEWAPI_INTERNAL_URL?: string; NEWAPI_BRIDGE_TOKEN?: string });
 vi.mock("@/env", () => ({ env: mockEnv }));
 
-import { ensureConsoleAccount, findSubscription, fulfillSubscription, listActiveSubscriptions, NewApiError, upsertPlan } from "./newapi";
+import { ensureConsoleAccount, fetchExpressionPrices, findSubscription, fulfillSubscription, listActiveSubscriptions, NewApiError, upsertPlan } from "./newapi";
 
 const input = { subject: "user-1", email: "a@b.co", displayName: "Ada" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -206,5 +206,61 @@ describe("plans, fulfil and single subscription lookup", () => {
     vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: [{ subscription: sub }] })));
     await expect(findSubscription(42, 8)).resolves.toMatchObject({ id: 8, remainingQuota: 600_000, status: "expired" });
     await expect(findSubscription(42, 9)).resolves.toBeNull();
+  });
+});
+
+describe("fetchExpressionPrices", () => {
+  beforeEach(() => {
+    mockEnv.NEWAPI_INTERNAL_URL = "http://newapi.internal:3000";
+    mockEnv.NEWAPI_BRIDGE_TOKEN = TOKEN;
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reads base prices with the bearer token and defaults dynamic to false", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      json({
+        success: true,
+        message: "",
+        data: { models: [{ model_name: "b", billing_mode: "tiered_expr", input_usd_per_m: 0.112, output_usd_per_m: 0.336, dynamic: true }, { model_name: "c", input_usd_per_m: 1, output_usd_per_m: 2 }] },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const prices = await fetchExpressionPrices();
+
+    expect(prices.get("b")).toEqual({ inputUsdPerM: 0.112, outputUsdPerM: 0.336, dynamic: true });
+    expect(prices.get("c")).toEqual({ inputUsdPerM: 1, outputUsdPerM: 2, dynamic: false });
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(String(url)).toBe("http://newapi.internal:3000/api/aedoxy/model-prices");
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("returns an empty map for models: [] or null", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: { models: [] } })));
+    expect((await fetchExpressionPrices()).size).toBe(0);
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: { models: null } })));
+    expect((await fetchExpressionPrices()).size).toBe(0);
+  });
+
+  it("drops negative, non-numeric and nameless entries and keeps the valid ones", async () => {
+    const models = [
+      { model_name: "neg", input_usd_per_m: -1, output_usd_per_m: 1 },
+      { model_name: "str", input_usd_per_m: "1", output_usd_per_m: 1 },
+      { model_name: "", input_usd_per_m: 1, output_usd_per_m: 1 },
+      { model_name: "missing", input_usd_per_m: 1 },
+      "junk",
+      { model_name: "ok", input_usd_per_m: 0, output_usd_per_m: 0.5 },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: { models } })));
+    expect([...(await fetchExpressionPrices()).keys()]).toEqual(["ok"]);
+  });
+
+  it("maps 404 (old gateway), success:false and a bad shape to typed errors", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({}, 404)));
+    await expect(fetchExpressionPrices()).rejects.toMatchObject({ kind: "http", status: 404 });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: false, message: "scope" })));
+    await expect(fetchExpressionPrices()).rejects.toMatchObject({ kind: "rejected" });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ success: true, data: [] })));
+    await expect(fetchExpressionPrices()).rejects.toMatchObject({ kind: "invalid_response" });
   });
 });

@@ -54,6 +54,8 @@ export interface Model {
   creditOutputUsdPerM: number | null;
   /** Fixed credit per request in USD, for models billed per request. */
   creditPerRequestUsd: number | null;
+  /** The credit price depends on the time of day (expression billing); the figure is the price at fetch time. */
+  creditDynamic: boolean;
 }
 
 export interface ActivityItem {
