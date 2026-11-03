@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { AdminError, type Actor } from "@/server/domain/audit";
 import { consumeFreshAuth } from "@/server/domain/fresh-auth";
+import { hitRateLimit, resetRateLimit } from "@/server/rate-limit";
 import { getSession } from "@/server/session";
 
 /**
@@ -73,8 +74,8 @@ export async function getAdminActor(session: SessionLike): Promise<Actor> {
 
 const FAIL_WINDOW_MS = 5 * 60_000;
 const MAX_FAILS = 5;
-// shortcut: in-memory per process (resets on restart, not shared between instances); better-auth only throttles HTTP calls, not auth.api. Move to the database before running more than one web instance.
-const failures = new Map<string, number[]>();
+// Better Auth only throttles HTTP calls, not auth.api, so code checks are limited here.
+const failKey = (userId: string) => `admin:code:${userId}`;
 
 export type CodeVerifier = (code: string) => Promise<void>;
 
@@ -83,24 +84,21 @@ export async function verifyFreshCode(
   deps: { totp: CodeVerifier; backup: CodeVerifier },
   userId: string,
   rawCode: string,
-  now = Date.now(),
 ): Promise<void> {
   const code = rawCode.replace(/\s+/g, "");
   if (!code) throw new AdminError("Masukkan kode 2FA.", "TOTP_REQUIRED");
 
-  const recent = (failures.get(userId) ?? []).filter((t) => now - t < FAIL_WINDOW_MS);
-  if (recent.length >= MAX_FAILS) {
-    failures.set(userId, recent);
-    throw new AdminError("Terlalu banyak kode salah. Coba lagi dalam beberapa menit.", "TOTP_RATE_LIMITED");
-  }
+  // Only failures count: the attempt is counted before the check (so parallel guesses cannot slip past the cap)
+  // and forgotten again when the code is right. Fails closed.
+  const hit = await hitRateLimit({ key: failKey(userId), windowMs: FAIL_WINDOW_MS, max: MAX_FAILS, failOpen: false });
+  if (!hit.allowed) throw new AdminError("Terlalu banyak kode salah. Coba lagi dalam beberapa menit.", "TOTP_RATE_LIMITED");
 
   try {
     await (/^\d{6}$/.test(code) ? deps.totp(code) : deps.backup(code));
   } catch {
-    failures.set(userId, [...recent, now]);
     throw new AdminError("Kode 2FA salah.", "TOTP_INVALID");
   }
-  failures.delete(userId);
+  await resetRateLimit(failKey(userId));
 }
 
 /**
@@ -112,9 +110,8 @@ export async function verifyFreshAuth(
   deps: { totp: CodeVerifier; backup: CodeVerifier; consumeProof: () => Promise<boolean> },
   userId: string,
   rawCode: string,
-  now = Date.now(),
 ): Promise<void> {
-  if (rawCode.replace(/\s+/g, "")) return verifyFreshCode(deps, userId, rawCode, now);
+  if (rawCode.replace(/\s+/g, "")) return verifyFreshCode(deps, userId, rawCode);
   if (await deps.consumeProof()) return;
   throw new AdminError("Masukkan kode 2FA atau gunakan passkey.", "TOTP_REQUIRED");
 }
@@ -142,9 +139,4 @@ export async function requireFreshAuth({ code = "" }: { code?: string } = {}) {
 /** Kept for the existing admin actions: the form's `totp` field, which may be empty after a passkey assertion. */
 export async function requireFreshTotp(code: string) {
   return requireFreshAuth({ code });
-}
-
-/** Test hook: forget recorded failures. */
-export function resetFreshCodeFailures() {
-  failures.clear();
 }

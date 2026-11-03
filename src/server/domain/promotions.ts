@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, type Tx } from "@/server/db/client";
 import { promotionRedemptions, promotions } from "@/server/db/schema";
+import { hitRateLimit } from "@/server/rate-limit";
 import { chooseDiscount, promoRejection, type DiscountChoice, type PromoRejection, type PromoRule } from "./pricing";
 
 /**
@@ -43,20 +44,13 @@ export function normalizeCode(raw: string | null | undefined): string | null {
   return code;
 }
 
-// shortcut: in-memory per process (resets on restart, not shared between instances); move to Postgres or Redis before running more than one web instance.
-const recentLookups = new Map<string, number[]>();
 const LOOKUP_MAX = 10;
 const LOOKUP_WINDOW_MS = 60_000;
 
-/** Throttles code guessing: at most 10 code lookups per user per minute, on the preview and on the order. */
-export function checkCodeRateLimit(userId: string, now = Date.now()) {
-  const recent = (recentLookups.get(userId) ?? []).filter((t) => now - t < LOOKUP_WINDOW_MS);
-  if (recent.length >= LOOKUP_MAX) {
-    recentLookups.set(userId, recent);
-    throw new PromoError("PROMO_RATE_LIMITED");
-  }
-  recent.push(now);
-  recentLookups.set(userId, recent);
+/** Throttles code guessing: at most 10 code lookups per user per minute, on the preview and on the order. Fails closed. */
+export async function checkCodeRateLimit(userId: string) {
+  const r = await hitRateLimit({ key: `promo:lookup:${userId}`, windowMs: LOOKUP_WINDOW_MS, max: LOOKUP_MAX, failOpen: false });
+  if (!r.allowed) throw new PromoError("PROMO_RATE_LIMITED");
 }
 
 type Reader = typeof db | Tx;
@@ -121,7 +115,7 @@ export function quoteFor(plan: { id: number; priceIdr: number }, loaded: LoadedP
 /** Quotes for the plans page and the "Terapkan" button. A code lookup is rate limited. */
 export async function quotePlans(userId: string, planRows: { id: number; priceIdr: number }[], rawCode?: string | null, now = new Date()) {
   const code = normalizeCode(rawCode);
-  if (code !== null) checkCodeRateLimit(userId);
+  if (code !== null) await checkCodeRateLimit(userId);
   const loaded = await loadPromos(db, userId, code);
   return new Map(planRows.map((p) => [p.id, quoteFor(p, loaded, now)]));
 }

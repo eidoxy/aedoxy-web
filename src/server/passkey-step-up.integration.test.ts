@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { requireFreshAuth, requireFreshTotp, resetFreshCodeFailures } from "@/server/admin";
+import { requireFreshAuth, requireFreshTotp } from "@/server/admin";
 import { auth } from "@/server/auth";
 import { db, pool as pgPool } from "@/server/db/client";
 import { freshAuth, passkey, session, user } from "@/server/db/schema";
@@ -23,10 +23,7 @@ import { cookieHeader, createAuthenticator } from "@/server/test/webauthn";
 
 beforeAll(prepareDatabase);
 afterAll(() => pgPool.end());
-beforeEach(async () => {
-  await resetDatabase();
-  resetFreshCodeFailures();
-});
+beforeEach(resetDatabase);
 
 const origin = "https://aedoxy.test";
 const rp = relyingPartyFor(origin);

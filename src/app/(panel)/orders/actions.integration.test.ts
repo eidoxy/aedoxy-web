@@ -36,6 +36,15 @@ async function setup() {
 const statusOf = async (id: string) => (await db.select().from(orders).where(eq(orders.id, id)))[0].status;
 
 describe("cancelMyOrder", () => {
+  it("allows 10 attempts per minute per user, then answers with the rate-limit message", async () => {
+    await setup();
+    const missing = "00000000-0000-4000-8000-000000000000"; // a well-formed id passes the format check, which runs before the limiter
+    for (let i = 0; i < 10; i++) expect(await cancelMyOrder(missing)).toEqual({ error: "Pesanan tidak ditemukan." });
+    expect(await cancelMyOrder(missing)).toEqual({ error: "Terlalu banyak percobaan. Coba lagi dalam satu menit." });
+    current.userId = (await seedUser()).id;
+    expect(await cancelMyOrder(missing)).toEqual({ error: "Pesanan tidak ditemukan." });
+  });
+
   it("cancels a pending order: Poketo invoice, pool reservation and plan stock are released", async () => {
     const { plan, me } = await setup();
     const { orderId, tradeNo } = await createPlanOrder({ userId: me.id, planId: plan.id });

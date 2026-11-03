@@ -13,7 +13,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { auth } from "@/server/auth";
-import { resetFreshCodeFailures } from "@/server/admin";
 import { db, pool as pgPool } from "@/server/db/client";
 import { adminAuditLog, session, twoFactor, user } from "@/server/db/schema";
 import { seedPasswordUser, signIn, TEST_PASSWORD } from "@/server/test/auth-helpers";
@@ -22,10 +21,7 @@ import { regenerateBackupCodesAction, resetTwoFactorAction } from "./actions";
 
 beforeAll(prepareDatabase);
 afterAll(() => pgPool.end());
-beforeEach(async () => {
-  await resetDatabase();
-  resetFreshCodeFailures();
-});
+beforeEach(resetDatabase);
 
 /** An admin with working 2FA, signed in. `codes` are the plain backup codes (the 2FA proof used in these tests). */
 async function adminWith2fa() {

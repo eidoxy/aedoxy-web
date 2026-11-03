@@ -5,6 +5,7 @@ import { db, type Tx } from "@/server/db/client";
 import { fulfillments, orders, plans, user } from "@/server/db/schema";
 import { listActiveSubscriptions, NewApiError } from "@/server/integrations/newapi";
 import { createInvoice } from "@/server/integrations/poketo";
+import { hitRateLimit } from "@/server/rate-limit";
 import * as pool from "./pool";
 import { isPlanSynced, planIsSynced } from "./plan-sellable";
 import { computeOrderAmount, generateTradeNo } from "./pricing";
@@ -63,17 +64,9 @@ export class OrderError extends Error {
   }
 }
 
-// shortcut: in-memory per process, so it resets on restart and is not shared between instances; move to Postgres or Redis before running more than one web instance.
-const recentCreates = new Map<string, number[]>();
-
-function checkRateLimit(userId: string, now = Date.now()) {
-  const recent = (recentCreates.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  if (recent.length >= RATE_LIMIT_MAX) {
-    recentCreates.set(userId, recent);
-    throw new OrderError("RATE_LIMITED", "Terlalu banyak percobaan. Coba lagi dalam satu menit.");
-  }
-  recent.push(now);
-  recentCreates.set(userId, recent);
+async function checkRateLimit(userId: string) {
+  const r = await hitRateLimit({ key: `orders:create:${userId}`, windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX, failOpen: false });
+  if (!r.allowed) throw new OrderError("RATE_LIMITED", "Terlalu banyak percobaan. Coba lagi dalam satu menit.");
 }
 
 export type CreatePlanOrderInput = { userId: string; planId: number; replaceConfirmed?: boolean; /** Optional promo code, any case. */ promoCode?: string };
@@ -91,9 +84,9 @@ export async function createPlanOrder(input: CreatePlanOrderInput): Promise<Crea
 
 async function createPlanOrderUnchecked(input: CreatePlanOrderInput): Promise<CreatePlanOrderResult> {
   const { userId, planId } = input;
-  checkRateLimit(userId);
+  await checkRateLimit(userId);
   const promoCode = normalizeCode(input.promoCode);
-  if (promoCode !== null) checkCodeRateLimit(userId);
+  if (promoCode !== null) await checkCodeRateLimit(userId);
 
   let newapiUserId: number | null;
   try {

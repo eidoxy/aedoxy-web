@@ -166,4 +166,17 @@ describe("GET /api/public/activity", () => {
     expect(ok.status).toBe(200);
     expect(ok.headers.get("cache-control")).toContain("s-maxage=30");
   });
+
+  it("keeps serving the feed when the limiter store is down (public, fails open)", async () => {
+    headerBag.ip = "203.0.113.60";
+    // The limiter is the only db.execute caller on this path; the feed itself uses db.select.
+    const spy = vi.spyOn(db, "execute").mockRejectedValue(new Error("connection refused"));
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      for (let i = 0; i < 31; i++) expect((await GET()).status).toBe(200);
+    } finally {
+      spy.mockRestore();
+      quiet.mockRestore();
+    }
+  });
 });

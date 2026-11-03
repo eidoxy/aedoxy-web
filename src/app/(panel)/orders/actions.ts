@@ -5,6 +5,7 @@ import { db } from "@/server/db/client";
 import { orders } from "@/server/db/schema";
 import { cancelOrder, settleOrderPaid } from "@/server/domain/orders";
 import { cancelInvoice, getInvoice, isUuid, type PoketoInvoice } from "@/server/integrations/poketo";
+import { hitRateLimit } from "@/server/rate-limit";
 import { requireSession } from "@/server/session";
 
 export type CancelOrderState = {
@@ -18,15 +19,9 @@ export type CancelOrderState = {
 
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
-// shortcut: in-memory per process like the order-create limit, so it resets on restart and is not shared between instances; move to Postgres or Redis with more than one web instance.
-const recent = new Map<string, number[]>();
-
-function rateLimited(userId: string, now = Date.now()): boolean {
-  const times = (recent.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  const limited = times.length >= RATE_LIMIT_MAX;
-  if (!limited) times.push(now);
-  recent.set(userId, times);
-  return limited;
+async function rateLimited(userId: string): Promise<boolean> {
+  const r = await hitRateLimit({ key: `orders:cancel:${userId}`, windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX, failOpen: false });
+  return !r.allowed;
 }
 
 const PAID: CancelOrderState = { paid: true, notice: "Pembayaran sudah kami terima. Paket Anda sedang diaktifkan." };
@@ -39,7 +34,7 @@ const PAID: CancelOrderState = { paid: true, notice: "Pembayaran sudah kami teri
 export async function cancelMyOrder(orderId: string): Promise<CancelOrderState> {
   const { user } = await requireSession();
   if (typeof orderId !== "string" || !isUuid(orderId)) return { error: "Pesanan tidak ditemukan." };
-  if (rateLimited(user.id)) return { error: "Terlalu banyak percobaan. Coba lagi dalam satu menit." };
+  if (await rateLimited(user.id)) return { error: "Terlalu banyak percobaan. Coba lagi dalam satu menit." };
 
   const [order] = await db
     .select({ id: orders.id, tradeNo: orders.tradeNo, status: orders.status, amountIdr: orders.amountIdr })
