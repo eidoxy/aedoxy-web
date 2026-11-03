@@ -11,7 +11,7 @@ export const ORDER_STATUSES = orders.status.enumValues;
 export const FULFILLMENT_STATUSES = fulfillments.status.enumValues;
 
 /** Makes user input a literal inside LIKE/ILIKE. */
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+export const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export type OrderFilter = { status?: string; fulfillment?: string; q?: string };
 

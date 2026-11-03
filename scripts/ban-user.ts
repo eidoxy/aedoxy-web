@@ -17,9 +17,11 @@ async function main() {
   console.log(
     result.console === "pending"
       ? "console: tertunda, worker akan mengulang"
-      : result.console === "none"
-        ? "console: tidak ada akun console"
-        : "console: dinonaktifkan",
+      : result.console === "protected"
+        ? "console: menolak (admin di console, 409); turunkan perannya di console lalu jalankan ulang"
+        : result.console === "none"
+          ? "console: tidak ada akun console"
+          : "console: dinonaktifkan",
   );
 }
 
