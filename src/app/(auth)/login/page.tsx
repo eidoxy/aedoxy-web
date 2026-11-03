@@ -5,6 +5,7 @@ import { AuthCard, AuthCardFallback } from "@/components/auth/auth-ui";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignedInGate } from "@/components/auth/signed-in-gate";
 import { env } from "@/env";
+import { socialErrorMessage } from "@/lib/auth-messages";
 import { getSiteSettings } from "@/server/site";
 
 export const metadata: Metadata = { title: "Masuk" };
@@ -20,7 +21,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 }
 
 async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
-  const [{ reset }, { brandName }] = await Promise.all([searchParams, getSiteSettings()]);
+  const [{ reset, error }, { brandName }] = await Promise.all([searchParams, getSiteSettings()]);
   const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
   const githubEnabled = Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
   return (
@@ -40,7 +41,7 @@ async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">
         </p>
       }
     >
-      <LoginForm googleEnabled={googleEnabled} githubEnabled={githubEnabled} />
+      <LoginForm googleEnabled={googleEnabled} githubEnabled={githubEnabled} initialError={socialErrorMessage(error)} />
     </AuthCard>
   );
 }

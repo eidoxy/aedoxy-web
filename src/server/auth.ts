@@ -7,6 +7,7 @@ import { jwt } from "better-auth/plugins/jwt";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { username } from "better-auth/plugins/username";
 import { env } from "@/env";
+import { bannedMessage } from "@/lib/auth-messages";
 import { isValidUsername, USERNAME_MAX, USERNAME_MIN } from "@/lib/username";
 import { ensureConsoleAccountForUser } from "@/server/account";
 import { db } from "@/server/db/client";
@@ -164,7 +165,8 @@ export const auth = betterAuth({
     twoFactor({ issuer: "Aedoxy" }),
     passkeyPlugin(baseURL),
     passkeyGate(),
-    admin({ defaultRole: "user", adminRoles: ["admin"] }),
+    // bannedUserMessage runs when a session is created for a banned user, i.e. after the password/passkey/provider was accepted.
+    admin({ defaultRole: "user", adminRoles: ["admin"], bannedUserMessage: (u) => bannedMessage(u) }),
     sessionTrust(),
     nextCookies(), // keep last
   ],

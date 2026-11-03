@@ -2,6 +2,7 @@
  * Bans a user and closes their console account. Run on the server only:
  *   bun scripts/ban-user.ts <email> [reason]      (or: bun run db:ban-user <email> [reason])
  * Sets the ban (no end date), signs the user out everywhere, writes an audit row and disables the console account.
+ * The reason is shown to the user on the sign-in page ("Alasan: ..."), so write one that is safe to read; it is cut at 200 characters.
  * There is no HTTP endpoint for this.
  */
 import { pool } from "@/server/db/client";

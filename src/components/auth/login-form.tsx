@@ -8,11 +8,12 @@ import { useForm } from "react-hook-form";
 import { FormMessage, TextField } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { signInErrorMessage } from "@/lib/auth-messages";
 import { isEmailIdentifier, loginSchema, type LoginValues } from "@/lib/schemas/auth";
 
-export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boolean; githubEnabled: boolean }) {
+export function LoginForm({ googleEnabled, githubEnabled, initialError }: { googleEnabled: boolean; githubEnabled: boolean; initialError?: string }) {
   const router = useRouter();
-  const [formError, setFormError] = useState<string>();
+  const [formError, setFormError] = useState<string | undefined>(initialError);
   const [needsCode, setNeedsCode] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const {
@@ -38,7 +39,7 @@ export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boo
       router.push(isEmailIdentifier(identifier) ? `/verify-email?email=${encodeURIComponent(identifier)}` : "/verify-email");
       return;
     }
-    setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Username/email atau kata sandi salah.");
+    setFormError(signInErrorMessage(error, "Username/email atau kata sandi salah."));
   }
 
   /** Discoverable credential: the browser lists the passkeys for this site, so no email is typed. */
@@ -48,7 +49,7 @@ export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boo
     const { data, error } = await authClient.signIn.passkey();
     if (error) {
       setPasskeyBusy(false);
-      setFormError(error.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Masuk dengan passkey gagal atau dibatalkan.");
+      setFormError(signInErrorMessage(error, "Masuk dengan passkey gagal atau dibatalkan."));
       return;
     }
     // Inside an OIDC flow (console login) the client already follows the redirect back to /oauth2/authorize.
@@ -59,8 +60,12 @@ export function LoginForm({ googleEnabled, githubEnabled }: { googleEnabled: boo
 
   async function social(provider: "google" | "github", label: string) {
     setFormError(undefined);
-    const { error } = await authClient.signIn.social({ provider, callbackURL: "/dashboard" });
-    if (error) setFormError(`Masuk dengan ${label} gagal. Coba lagi.`);
+    // A failed provider round trip comes back to this page (keeping the signed OIDC query) with ?error=, shown by the login page.
+    const back = new URLSearchParams(window.location.search);
+    back.delete("error");
+    back.delete("error_description");
+    const { error } = await authClient.signIn.social({ provider, callbackURL: "/dashboard", errorCallbackURL: `/login${back.size ? `?${back}` : ""}` });
+    if (error) setFormError(signInErrorMessage(error, `Masuk dengan ${label} gagal. Coba lagi.`));
   }
 
   if (needsCode) return <TwoFactorStep />;
@@ -124,7 +129,7 @@ function TwoFactorStep() {
       : await authClient.twoFactor.verifyBackupCode({ code: value });
     if (err) {
       setBusy(false);
-      setError(err.status === 429 ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi." : "Kode salah. Coba lagi.");
+      setError(signInErrorMessage(err, "Kode salah. Coba lagi."));
       return;
     }
     router.replace("/dashboard");

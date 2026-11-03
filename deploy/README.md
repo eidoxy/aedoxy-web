@@ -108,6 +108,8 @@ sudo docker compose run --rm migrate node scripts/seed-catalog.js
 sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # NODE_ENV=production: rahasia baru dicetak ke stdout
 ```
 
+Alasan ban ditampilkan ke pengguna di halaman masuk ("Akun Anda diblokir. Alasan: ..."), jadi tulis alasan yang aman dibaca (maksimal 200 karakter; catatan internal jangan ditaruh di sini). Pesan itu hanya muncul setelah kata sandi, passkey, atau penyedia login sosial diterima, sehingga tidak membocorkan apakah sebuah akun ada. Setelah login sosial, halaman masuk hanya menampilkan pemberitahuan blokir tanpa alasan.
+
 `ban-user` mencetak `console: dinonaktifkan` bila console sudah mengikuti, atau `console: tertunda, worker akan mengulang` bila bridge gagal (ban tetap berlaku di aedoxy.com, worker `sync-console-status` mengulang tiap menit). Admin atau Root di console dilindungi bridge (HTTP 409): ban tetap tercatat, tetapi akun console-nya tidak dinonaktifkan dan worker mencatat `protected:http:409` tiap menit sampai peran itu diturunkan di console.
 
 `SEED_OAUTH_OUT=<path>` menulis rahasia ke berkas, `SEED_OAUTH_OUT=-` memaksa stdout. Rahasia hanya muncul sekali saat klien dibuat (tersimpan sebagai hash).
