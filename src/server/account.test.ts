@@ -44,6 +44,15 @@ describe("ensureConsoleAccountForUser", () => {
     expect(updateSet).toHaveBeenCalledWith({ newapiUserId: 7 });
   });
 
+  // Root runbook: the console user is linked by hand before the email is verified, so verifying must not call the bridge.
+  it("keeps a hand-linked newapi_user_id and never calls the bridge once the email is verified", async () => {
+    state.row = { id: "u1", email: "root@b.co", name: "Root", emailVerified: true, newapiUserId: 1, username: "eidoxy" };
+    await expect(ensureConsoleAccountForUser("u1")).resolves.toBe(1);
+    expect(ensureConsoleAccount).not.toHaveBeenCalled();
+    expect(updateSet).not.toHaveBeenCalled();
+    expect(state.row.newapiUserId).toBe(1);
+  });
+
   it("sends no username for an account created before usernames existed", async () => {
     state.row!.username = null;
     await ensureConsoleAccountForUser("u1");

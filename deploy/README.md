@@ -122,6 +122,8 @@ Alasan ban ditampilkan ke pengguna di halaman masuk ("Akun Anda diblokir. Alasan
 
 `SEED_OAUTH_OUT=<path>` menulis rahasia ke berkas, `SEED_OAUTH_OUT=-` memaksa stdout. Rahasia hanya muncul sekali saat klien dibuat (tersimpan sebagai hash).
 
+Mematikan login dan daftar password di console gateway tanpa mengunci root: ikuti [RUNBOOK-CONSOLE-SSO.md](RUNBOOK-CONSOLE-SSO.md).
+
 ## CI/CD dan rollback
 
 Workflow `.github/workflows/deploy.yml` berjalan pada push ke `main`: tes, build dan push image ke GHCR (`:<sha>` dan `:latest`), lalu SSH ke VPS: `pull`, `migrate`, `up -d --no-deps web worker`. Deploy berhenti bila migrasi gagal.
