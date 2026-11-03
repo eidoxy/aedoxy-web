@@ -97,6 +97,11 @@ Migrasi `0009` harus sudah berjalan. Pakai pengguna uji (bukan akun admin), dan 
 - [ ] Setelah dihapus, email dan username yang sama bisa mendaftar lagi; pesanan lama pengguna tetap terlihat di `/admin/orders` dan saldo pool tidak berubah.
 - [ ] Lebih dari 10 aksi kelola dalam satu menit: aksi ke-11 ditolak dengan "Terlalu banyak aksi".
 
+### B3e. Metadata model dan katalog `/models` (gelombang 9i)
+- [ ] `/admin/models`: "Hapus" di baris metadata membuka dialog yang menyebut nama model, bahwa hanya metadata yang dihapus, modelnya tetap tampil di /models tanpa metadata, dan tindakan tidak dapat dibatalkan. Esc menutup dialog, fokus kembali ke tombol. Tidak ada kode 2FA.
+- [ ] Setelah hapus: baris hilang, pesan "Metadata model dihapus." tampil di atas tabel, model muncul di "Model tanpa metadata", `/models` memperbarui seketika, dan `model_meta.delete` ada di audit dengan data lama (`before`). Bila baris itu sedang terbuka di form (`?edit=`), form kembali kosong. Simpan ulang nama yang sama membuat baris baru (`model_meta.create`).
+- [ ] `/models` di 390 px dan 768 px: tiap model tampil sebagai kartu dengan biaya kredit, harga resmi, context, kemampuan, status, dan output per paket tanpa menggeser ke samping; tombol salin berfungsi. Di 1280 px ke atas tampil tabel seperti sebelumnya. Cek terang dan gelap.
+
 ### B3c. Batas laju bersama dan IP klien (gelombang 9d)
 Jalankan di produksi atau lewat tunnel, karena `cf-connecting-ip` hanya ada di belakang Cloudflare. Migrasi `0008` harus sudah berjalan.
 - [ ] Salah kata sandi 6 kali berturut-turut di `/login` (email sama, jendela satu menit): percobaan ke-6 mendapat HTTP 429 (cek tab Network atau `curl -i -X POST https://aedoxy.com/api/auth/sign-in/email ...`).
