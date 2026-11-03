@@ -50,6 +50,7 @@ export default async function PrivacyPage() {
         <ul>
           <li>Poketo, untuk memproses pembayaran QRIS.</li>
           <li>Google, bila Anda memilih masuk dengan Google.</li>
+          <li>GitHub, bila Anda memilih masuk dengan GitHub.</li>
           <li>Penyedia model AI. Permintaan Anda diteruskan ke penyedia model yang Anda pilih agar dapat dijawab. Isi permintaan tunduk pada kebijakan penyedia itu.</li>
           <li>
             Penyedia hosting dan email: <Ph>ISI: nama penyedia dan lokasi server</Ph>.

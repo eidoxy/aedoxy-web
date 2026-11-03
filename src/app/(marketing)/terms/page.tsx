@@ -26,7 +26,7 @@ export default async function TermsPage() {
 
       <LegalSection title="2. Akun">
         <ul>
-          <li>Anda mendaftar dengan email atau akun Google. Email harus diverifikasi sebelum Anda bisa membeli paket atau membuka console.</li>
+          <li>Anda mendaftar dengan email, Google, atau GitHub. Email harus diverifikasi sebelum Anda bisa membeli paket atau membuka console.</li>
           <li>Anda bertanggung jawab atas keamanan akun dan API key Anda. API key bersifat pribadi dan tidak boleh dibagikan atau dijual kembali.</li>
           <li>Data yang Anda berikan harus benar.</li>
         </ul>
