@@ -133,6 +133,8 @@ Uang dalam rupiah disimpan sebagai `bigint` rupiah utuh. Kredit disimpan sebagai
 | `fx_rates` | `source`, `mid_rate` numeric(14,4), `source_date`, `fetched_at`, `applied` bool |
 | `webhook_events` | `event_id` (unik), `event_type`, `delivery_id`, `received_at`, `processed_at`, `result` |
 | `admin_audit_log` | `actor_id`, `action`, `target`, `before` jsonb, `after` jsonb, `ip`, `created_at` |
+| `rate_limits` | Penghitung batas laju aplikasi: `key` (PK, ber-namespace, mis. `orders:create:<userId>`), `count`, `reset_at`. Indeks pada `reset_at` |
+| `rate_limit` | Penghitung batas laju HTTP Better Auth (`rateLimit.storage = "database"`): `id`, `key` (unik, `<ip>|<path>`), `count`, `last_request` (ms epoch). Indeks pada `last_request` |
 | `model_meta` | `model_name` (unik), `provider`, `context_in`, `context_out`, `capabilities` text[], `official_input_usd_per_m`, `official_output_usd_per_m`, `visible`. Metadata katalog yang tidak disimpan New API (F08) |
 
 Indeks wajib: `orders(user_id, status)`, `orders(status, expires_at)`, `fulfillments(status, next_attempt_at)`, `subscription_grants(reconciled_at, ends_at)`.
@@ -300,6 +302,7 @@ Paket yang digantikan sebelum masa aktifnya habis tidak menunggu job ini: worker
 | Kurs tampilan | `refresh_hours` | Ambil dua sumber dan simpan kurs berlaku (F04) |
 | Rekonsiliasi paket | 15 menit | Bagian 9.4 |
 | Sinkronisasi paket | Saat admin menyimpan + 1 jam | Pastikan `plans` sama dengan `SubscriptionPlan` di New API |
+| Pembersihan batas laju (`rate-limit-cleanup`) | 60 menit | Hapus baris `rate_limits` dengan `reset_at` lebih tua dari 1 jam dan baris `rate_limit` dengan `last_request` lebih tua dari 1 jam, maksimal 5000 baris per tabel per siklus |
 | Invariant pool | 1 jam | `reserved_quota` = Σ kredit order `pending`. Bila berbeda, kirim alert, dan jangan memperbaiki otomatis |
 | Rekonsiliasi Poketo | Harian | `GET /v1/invoices?status=paid&createdFrom=` dibandingkan dengan order `paid`. Selisih → alert |
 
@@ -312,6 +315,8 @@ Hanya satu instance worker yang berjalan. `SKIP LOCKED` tetap aman jika nanti di
 - **Admin**: peran `admin` + 2FA wajib untuk membuka panel. Kode 2FA atau bukti passkey segar hanya diminta untuk mengganti kredensial di `/admin/security` (kode cadangan, passkey, reset 2FA). Perubahan konfigurasi (pool, harga, promo, pengaturan situs, kurs, pengguna, dan lainnya) hanya dijaga oleh sesi admin yang sudah login dengan 2FA, tanpa kode per aksi. Semua perubahan masuk `admin_audit_log`. Halaman `/admin/users` memblokir pengguna, mengubah peran (bukan diri sendiri, bukan admin terakhir), dan mencabut sesi; ban memakai satu implementasi dengan skrip `ban-user`.
 - **Bridge**: token dengan scope minimum, endpoint diblokir di Caddy, dan dipanggil lewat jaringan internal. Token access New API punya masa berlaku (default 30 hari, `AccessTokenDefaultExpiryDays`), jadi siapkan rotasi dan alert sebelum kedaluwarsa.
 - **Abuse**: rate limit untuk pembuatan order dan endpoint auth, batas order pending per user, verifikasi email sebelum membeli.
+- **Batas laju bersama di Postgres**: semua penghitung ada di database, jadi bertahan saat restart dan berlaku lintas instance web. Redis tidak dipakai karena Redis stack dipakai bersama gateway dengan `maxmemory 96mb` dan `allkeys-lru`, sehingga penghitung bisa terbuang diam-diam. Aplikasi memakai `hitRateLimit` (`src/server/rate-limit.ts`): satu pernyataan `INSERT ... ON CONFLICT DO UPDATE` atomik pada tabel `rate_limits`, jendela tetap, waktu dari `now()` database. Jendela tetap membolehkan burst sampai 2x `max` di batas jendela; sebagai gantinya tanpa riwayat per permintaan. Kunci ber-namespace per pemakai dan di-hash bila lebih dari 128 karakter. Bila database gagal: TUTUP (tolak) untuk kode 2FA, tebakan kode promo, kata sandi admin, trust device, pembuatan dan pembatalan order; BUKA (izinkan, dicatat tanpa kunci) hanya untuk feed publik. Verifikasi kode 2FA menghitung percobaan sebelum diperiksa dan menghapus hitungan bila kode benar, jadi hanya kegagalan beruntun yang menumpuk. Pembatas HTTP Better Auth memakai tabel `rate_limit`; jalur `/oauth2/token`, `/oauth2/userinfo`, dan `/jwks` diberi 600 per menit karena gateway memanggilnya dari IP publik VPS sendiri sehingga semua login konsol berbagi satu ember.
+- **IP klien**: seluruh lalu lintas masuk lewat Cloudflare Tunnel (tidak ada port terpublikasi), dan Cloudflare menulis `cf-connecting-ip`. Di produksi hanya header itu dipercaya (`src/server/client-ip.ts`, juga `advanced.ipAddress.ipAddressHeaders` Better Auth). `x-forwarded-for` dan `x-real-ip` bisa ditulis klien dan diabaikan. Di luar produksi urutannya `cf-connecting-ip`, `x-real-ip`, elemen pertama `x-forwarded-for`. Nilai bukan alamat IP valid menjadi `null`. Tanpa IP tepercaya, feed publik memakai satu ember `unknown` dan Better Auth memakai satu ember `no-trusted-ip|<path>` per jalur (pembatasan tidak dilewati). Alamat itu juga masuk ke audit log dan `session.ip_address`.
 - **OIDC provider**: PKCE, redirect URI persis (hanya callback ai.aedoxy.com), masa berlaku token singkat. Ikuti panduan keamanan Better Auth dan OWASP ASVS untuk alur auth.
 - **Header**: CSP, `X-Frame-Options` (kecuali bila checkout.js Poketo membutuhkan pengecualian), HSTS dari Caddy.
 - **Infrastruktur**: ganti password default `123456` Postgres dan Redis di `gateway-aedoxy/docker-compose.yml`. Pakai user DB `aedoxy` yang hanya punya akses ke database `aedoxy`.
@@ -367,5 +372,6 @@ Alert dikirim ke email admin atau webhook (Telegram/Discord) untuk: aktivasi pak
 3. Apakah `GET /api/pricing` bisa diakses tanpa login di pengaturan Anda.
 4. Masa berlaku maksimum access token New API, dan apakah token bisa dibuat tanpa kedaluwarsa.
 5. Perilaku `amount_used` untuk paket dengan `TotalAmount = 0`. Rancangan menghindarinya dengan selalu memberi batas fair use.
+6. Perilaku `cf-connecting-ip` di belakang Cloudflare Tunnel yang nyata (nilai untuk IPv6, dan IP yang dilihat Better Auth). Tes otomatis hanya mengirim header buatan; lihat `docs/VALIDASI-MANUAL.md` B3c.
 
 Sudah terverifikasi: tanpa paket aktif dan dengan saldo dompet 0, New API menolak request (`service/billing_session.go`: `subscription_first` → `tryWallet` → `ErrorCodeInsufficientUserQuota`, dikonfirmasi pemilik di ai.aedoxy.com).

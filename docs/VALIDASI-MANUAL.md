@@ -85,6 +85,16 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 - [ ] Di akun sendiri: tombol blokir dan ubah peran tidak ada. Menurunkan admin terakhir ditolak.
 - [ ] "Keluarkan dari semua perangkat": perangkat pengguna uji harus masuk lagi.
 
+### B3c. Batas laju bersama dan IP klien (gelombang 9d)
+Jalankan di produksi atau lewat tunnel, karena `cf-connecting-ip` hanya ada di belakang Cloudflare. Migrasi `0008` harus sudah berjalan.
+- [ ] Salah kata sandi 6 kali berturut-turut di `/login` (email sama, jendela satu menit): percobaan ke-6 mendapat HTTP 429 (cek tab Network atau `curl -i -X POST https://aedoxy.com/api/auth/sign-in/email ...`).
+- [ ] Restart web (`sudo docker compose restart web`) tepat setelah 5 percobaan gagal: percobaan berikutnya dalam menit yang sama tetap 429, karena penghitung ada di tabel `rate_limit`, bukan di memori.
+- [ ] `sudo docker compose exec postgres psql -U <user> -d aedoxy -c "select key, count from rate_limit order by last_request desc limit 5"` menampilkan kunci berbentuk `<IP publik>|/sign-in/email`.
+- [ ] `sudo docker compose logs web --tail=50` dan kolom `ip_address` di tabel `session` serta `admin_audit_log.ip` menunjukkan IP publik Anda, bukan `172.28.x.x`.
+- [ ] Kirim `curl -H "x-forwarded-for: 1.2.3.4" https://aedoxy.com/api/public/activity` lebih dari 30 kali per menit: tetap mendapat 429 walau `x-forwarded-for` diganti-ganti, dan baris `rate_limits` berkunci `public:activity:<IP Anda>` bertambah.
+- [ ] Login konsol (B5) tetap tidak kena 429; kunci `<IP VPS>|/oauth2/token` di tabel `rate_limit` boleh naik sampai 600 per menit.
+- [ ] Setelah satu jam worker berjalan, log tidak menampilkan `task rate-limit-cleanup failed`, dan baris `rate_limits`/`rate_limit` yang lebih tua dari satu jam hilang.
+
 ### B4. Pembelian dan paket (regresi)
 - [ ] `/plans`: tab Semua, Mingguan, Bulanan menyaring, Harian menampilkan pesan kosong.
 - [ ] Klik "Beli": muncul dialog, belum ada order sampai "Lanjut ke pembayaran".
@@ -130,12 +140,12 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 - [ ] Uji SMTP: `sudo docker compose run --rm migrate node scripts/send-test-email.js alamat@contoh.com` mencetak `terkirim` (kode keluar 0) dan email uji tiba di inbox. Bila gagal, kodenya (mis. `EAUTH 535`) menunjuk penyebab; lihat `deploy/README.md` bagian Email.
 - [ ] Dengan `EMAIL_SMTP_*` (atau `EMAIL_SERVER_URL`) Mailtrap terisi: daftar akun baru, email verifikasi muncul di inbox Mailtrap, dan tautannya membuka akun terverifikasi. Mailtrap Sandbox hanya menangkap email; pengiriman ke penerima nyata butuh Mailtrap Sending.
 - [ ] Webhook Poketo mengarah ke URL produksi dan rahasia tanda tangannya terisi.
-- [ ] Backup DB sebelum migrasi: `pg_dump`. Jalankan `bun run db:migrate` (0001 sampai 0005) lalu `bun run db:seed-catalog`.
+- [ ] Backup DB sebelum migrasi: `pg_dump`. Jalankan `bun run db:migrate` (0001 sampai 0008) lalu `bun run db:seed-catalog`.
 - [ ] Worker dijalankan sebagai proses terpisah dan tetap hidup (`bun run worker`).
 - [ ] Jadikan akun Anda admin: `bun run db:make-admin <email>`, daftarkan 2FA dan passkey sebelum membuka ke publik.
 - [ ] Isi 19 placeholder `[ISI: ...]` di halaman legal (sebagian lewat `/admin/settings`, sisanya keputusan bisnis: jendela refund, chargeback, penyimpanan prompt).
 - [ ] Isi pengaturan situs produksi: nama brand, logo, favicon, gambar OG, Base URL API, kontak.
-- [ ] Pembatas laju percobaan 2FA dan trust device ada di memori proses, jadi jalankan satu instance web saja, atau pindahkan ke penyimpanan bersama dulu.
+- [ ] Pembatas laju kini di Postgres (tabel `rate_limits` dan `rate_limit`, migrasi `0008`), jadi lebih dari satu instance web aman. Tidak ada variabel env baru. Jalankan `migrate` sebelum `up -d web worker`.
 
 ### Setelah deploy (smoke test)
 - [ ] `/`, `/docs`, `/pricing`, `/models` menjawab 200 dengan HTTPS.

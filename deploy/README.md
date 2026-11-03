@@ -94,6 +94,14 @@ Kegagalan kirim saat aplikasi berjalan tercatat sebagai `[auth] email failed rea
 sudo docker compose logs web | grep "email failed"
 ```
 
+## Batas laju dan IP klien
+
+Batas laju disimpan di Postgres, bukan di memori proses atau Redis: tabel `rate_limits` (batas aplikasi) dan `rate_limit` (batas HTTP Better Auth), dibuat oleh migrasi `0008`. Tidak ada variabel env baru dan tidak ada layanan baru. Karena penghitung ada di database, restart `web` tidak mereset batas dan lebih dari satu instance web berbagi batas yang sama. Worker menjalankan tugas `rate-limit-cleanup` tiap 60 menit untuk menghapus penghitung yang lebih tua dari satu jam.
+
+Urutan deploy: `migrate` dulu, lalu `up -d --no-deps web worker`. Web versi baru tanpa migrasi `0008` menolak pembuatan order, kode 2FA, dan trust device (batas aplikasi gagal tertutup) dan endpoint auth HTTP mengembalikan error karena tabel `rate_limit` belum ada, sedangkan feed publik tetap jalan. Workflow `deploy.yml` sudah berurutan seperti ini.
+
+Alamat klien dibaca hanya dari `cf-connecting-ip` (ditulis Cloudflare). Pastikan tidak ada port web yang terpublikasi ke host, karena di luar Cloudflare header itu bisa dipalsukan. Gateway memanggil `/api/auth/oauth2/token`, `/oauth2/userinfo`, dan `/jwks` dari IP publik VPS, jadi semua login konsol berbagi satu ember per jalur (diberi batas 600 per menit).
+
 ## Perintah operator
 
 ```sh
