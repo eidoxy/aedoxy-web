@@ -1,6 +1,7 @@
 import { passkey } from "@better-auth/passkey";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { clientIp } from "@/server/client-ip";
 import { db } from "@/server/db/client";
 import { consumeFreshAuth, grantFreshAuth, hasFreshAuth } from "@/server/domain/fresh-auth";
 import { writeAudit } from "@/server/domain/audit";
@@ -27,11 +28,6 @@ const REGISTER_VERIFY = "/passkey/verify-registration";
 
 const forbidden = (code: string, message: string) => APIError.from("FORBIDDEN", { message, code });
 
-function ipFrom(headers: Headers | undefined): string | null {
-  const raw = headers?.get("x-forwarded-for")?.split(",")[0]?.trim() || headers?.get("x-real-ip")?.trim() || null;
-  return raw ? raw.slice(0, 64) : null;
-}
-
 /** Sent by the "Gunakan passkey" button next to a 2FA field; see the step-up branch below. */
 export const STEP_UP_HEADER = "x-aedoxy-step-up";
 
@@ -55,7 +51,7 @@ export const passkeyGate = () =>
         },
       ],
     },
-    // shortcut: in-memory counters (see auth.ts rateLimit); move to storage "database" with more than one instance.
+    // Counted in the database like the rest of auth.ts rateLimit.
     rateLimit: [
       { pathMatcher: (path) => path === "/passkey/verify-authentication", window: 60, max: 10 },
       { pathMatcher: (path) => path === "/passkey/generate-authenticate-options", window: 60, max: 20 },
@@ -77,7 +73,7 @@ export function passkeyPlugin(baseUrl: string) {
           const { credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
           await db.transaction((tx) =>
             writeAudit(tx, {
-              actor: { id: user.id, ip: ipFrom(ctx.headers) },
+              actor: { id: user.id, ip: ctx.headers ? clientIp(ctx.headers) : null },
               action: "admin.passkey.add",
               target: `user:${user.id}`,
               after: { deviceType: credentialDeviceType, backedUp: credentialBackedUp },

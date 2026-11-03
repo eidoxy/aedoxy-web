@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { AdminError, type Actor } from "@/server/domain/audit";
 import { consumeFreshAuth } from "@/server/domain/fresh-auth";
+import { clientIp } from "@/server/client-ip";
 import { hitRateLimit, resetRateLimit } from "@/server/rate-limit";
 import { getSession } from "@/server/session";
 
@@ -62,14 +63,10 @@ export async function requireAdmin(opts: { allowWithout2fa?: boolean } = {}) {
 }
 
 /**
- * Client address for the audit log. shortcut: trusts x-forwarded-for as sent,
- * so it is only reliable behind a reverse proxy that overwrites the header;
- * upgrade when the deployment topology is fixed.
+ * Client address for the audit log (null when it cannot be trusted, see client-ip.ts).
  */
 export async function getAdminActor(session: SessionLike): Promise<Actor> {
-  const h = await headers();
-  const raw = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || null;
-  return { id: session.user.id, ip: raw ? raw.slice(0, 64) : null };
+  return { id: session.user.id, ip: clientIp(await headers()) };
 }
 
 const FAIL_WINDOW_MS = 5 * 60_000;
