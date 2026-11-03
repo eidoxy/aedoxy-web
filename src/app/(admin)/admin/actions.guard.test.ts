@@ -20,7 +20,7 @@ import { retryFulfillmentAction } from "./orders/actions";
 import { createPromoAction, stopPromoAction } from "./promos/actions";
 import { duplicatePlanAction, movePlanAction, savePlanAction, setEnabledAction, setPriceAction } from "./plans/actions";
 import { hideActivityItemAction, saveActivitySettingsAction } from "./activity/actions";
-import { saveModelMetaAction } from "./models/actions";
+import { deleteModelMetaAction, saveModelMetaAction } from "./models/actions";
 import { resetSiteAssetAction, saveAnnouncementAction, saveBrandAction, saveContactAction, saveDocsAction, saveLogoOptionsAction, uploadSiteAssetAction } from "./settings/actions";
 import { confirmPasskeyAddAction, deletePasskeyAction, regenerateBackupCodesAction, resetTwoFactorAction } from "./security/actions";
 import { adjustPoolAction, setThresholdAction } from "./pool/actions";
@@ -42,6 +42,7 @@ const actions = {
   saveActivitySettingsAction,
   hideActivityItemAction,
   saveModelMetaAction,
+  deleteModelMetaAction,
   saveBrandAction,
   saveLogoOptionsAction,
   saveContactAction,

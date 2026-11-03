@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import type { ModelMetaInput } from "@/lib/schemas/model-meta";
 import { db } from "@/server/db/client";
 import { modelMeta } from "@/server/db/schema";
-import { writeAudit, type Actor } from "./audit";
+import { AdminError, writeAudit, type Actor } from "./audit";
 
 /** Admin side of model_meta (F08). The upsert and its audit row share one transaction. */
 
@@ -40,5 +40,15 @@ export async function adminUpsertModelMeta(actor: Actor, input: ModelMetaInput) 
       after: editable(values),
     });
     return { created: !before };
+  });
+}
+
+/** Removes the row; the model itself stays in the gateway and shows in /models without metadata. */
+export async function adminDeleteModelMeta(actor: Actor, modelName: string) {
+  await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(modelMeta).where(eq(modelMeta.modelName, modelName)).for("update");
+    if (!before) throw new AdminError("Metadata model tidak ditemukan.");
+    await tx.delete(modelMeta).where(eq(modelMeta.id, before.id));
+    await writeAudit(tx, { actor, action: "model_meta.delete", target: `model_meta:${modelName}`, before: editable(before) });
   });
 }
