@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   pgTable,
   text,
   timestamp,
@@ -342,6 +343,18 @@ export const passkey = pgTable(
     index("passkey_userId_idx").on(table.userId),
     uniqueIndex("passkey_credentialID_uidx").on(table.credentialID),
   ],
+);
+
+/** Better Auth's HTTP rate limiter (rateLimit.storage = "database"); last_request is epoch milliseconds. */
+export const rateLimit = pgTable(
+  "rate_limit",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull().unique(),
+    count: integer("count").notNull(),
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (table) => [index("rate_limit_last_request_idx").on(table.lastRequest)],
 );
 
 export const userRelations = relations(user, ({ many }) => ({

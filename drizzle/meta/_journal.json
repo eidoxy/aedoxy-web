@@ -57,6 +57,13 @@
       "when": 1793690274634,
       "tag": "0007_console_disabled",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793697902146,
+      "tag": "0008_rate_limits",
+      "breakpoints": true
     }
   ]
 }

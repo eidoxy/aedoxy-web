@@ -308,6 +308,17 @@ export const freshAuth = pgTable(
   (t) => [uniqueIndex("fresh_auth_session_purpose_uidx").on(t.sessionId, t.purpose)],
 );
 
+/** Shared fixed-window counters for the app's own limiters (src/server/rate-limit.ts). Better Auth's HTTP limiter has its own table, rate_limit. */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    resetAt: ts("reset_at").notNull(),
+  },
+  (t) => [index("rate_limits_reset_at_idx").on(t.resetAt)],
+);
+
 /** Small admin-owned settings, one jsonb value per key. Key "activity": F07 feed controls (see domain/activity.ts). */
 export const siteSettings = pgTable("site_settings", {
   key: text("key").primaryKey(),
