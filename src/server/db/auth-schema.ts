@@ -28,6 +28,8 @@ export const user = pgTable(
     banReason: text("ban_reason"),
     banExpires: timestamp("ban_expires"),
     newapiUserId: integer("newapi_user_id").unique(),
+    /** Last status that was successfully pushed to the console (true = disabled there). The worker re-pushes while it differs from the effective ban. */
+    consoleDisabled: boolean("console_disabled").default(false).notNull(),
     feedVisibility: text("feed_visibility").default("masked"),
     /** F07 opt-out, read straight from the table (not a Better Auth field). `feed_visibility` above is unused. */
     showActivity: boolean("show_activity").default(true).notNull(),

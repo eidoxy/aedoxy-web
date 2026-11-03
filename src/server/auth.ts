@@ -60,7 +60,8 @@ export const auth = betterAuth({
   // The three /two-factor paths only need the password over HTTP; the admin security actions call the same
   // handlers through auth.api after also checking a fresh 2FA code, so the HTTP routes are closed (auth.api is unaffected).
   // Same for deleting or renaming a passkey: the admin security actions do it and write the audit row.
-  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", ...PASSKEY_PATHS_CLOSED_OVER_HTTP, "/is-username-available"],
+  // /admin/remove-user is closed because deleting the row loses the subject, so the console account could no longer be disabled.
+  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", ...PASSKEY_PATHS_CLOSED_OVER_HTTP, "/is-username-available", "/admin/remove-user"],
 
   user: {
     validateUserInfo: rejectUnverifiedOAuthEmail,
