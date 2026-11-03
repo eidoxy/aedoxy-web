@@ -29,8 +29,9 @@ const schema = z.object({
   // Better Auth + Google OAuth
   BETTER_AUTH_SECRET: later(z.string().min(32)),
   BETTER_AUTH_URL: later(z.url()),
-  GOOGLE_CLIENT_ID: later(z.string().min(1)),
-  GOOGLE_CLIENT_SECRET: later(z.string().min(1)),
+  // Google sign-in stays optional in strict mode; the pair is checked in superRefine.
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
 
   // First-party OIDC client for the New API console (seeded by scripts/seed-oauth-client.ts)
   CONSOLE_OIDC_CLIENT_ID: z.string().min(1).default("aedoxy-console"),
@@ -55,6 +56,9 @@ const schema = z.object({
   // Optional alert sink (Telegram/Discord webhook)
   ALERT_WEBHOOK_URL: z.url().optional(),
 }).superRefine((v, ctx) => {
+  if (!v.GOOGLE_CLIENT_ID !== !v.GOOGLE_CLIENT_SECRET) {
+    ctx.addIssue({ code: "custom", path: ["GOOGLE_CLIENT_ID"], message: "set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET together, or leave both empty" });
+  }
   if (!v.EMAIL_DEV_OUTBOX) return;
   const message =
     v.ENV_STRICT === "true"
