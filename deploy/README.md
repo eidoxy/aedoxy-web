@@ -32,6 +32,8 @@ sudo docker compose run --rm migrate            # migrasi web
 sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # mencetak CONSOLE_OIDC_CLIENT_SECRET sekali
 ```
 
+`GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` opsional: kosongkan keduanya untuk menonaktifkan masuk dengan Google (isi keduanya atau tidak sama sekali; salah satu saja ditolak saat start). Email memakai SMTP: isi `EMAIL_SERVER_URL` (URL SMTP nodemailer, mis. `smtp://api:TOKEN@live.smtp.mailtrap.io:587`, kredensial di-URL-encode) dan `EMAIL_FROM`. Mailtrap Sandbox hanya menangkap email dan tidak mengirim ke penerima nyata; pakai Mailtrap Sending untuk pengiriman sungguhan. Isi rahasia ini hanya di `.env` di VPS.
+
 Compose menolak nilai kosong untuk semua perintah, jadi `.env` awal berisi `CONSOLE_OIDC_CLIENT_SECRET=pending`. Jangan jalankan `web` sebelum nilai itu diganti. Salin rahasia yang tercetak ke `.env` (`CONSOLE_OIDC_CLIENT_SECRET`) dan ke pengaturan OAuth di konsol gateway. Redirect URI: `https://ai.aedoxy.com/oauth/aedoxy`. Lalu:
 
 ```sh

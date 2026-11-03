@@ -107,6 +107,7 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 - [ ] Token bridge `aedoxy-bridge` dibuat dengan lima scope: `user:read`, `user:write`, `billing:read`, `billing:write`, `group:read`.
 - [ ] `ServerAddress` di New API sama persis dengan `NEWAPI_PUBLIC_URL`. Jalankan `bun run db:seed-oauth` setelah itu.
 - [ ] Penyedia email dipilih dan email verifikasi terkirim ke kotak masuk nyata.
+- [ ] Dengan `EMAIL_SERVER_URL` Mailtrap terisi: daftar akun baru, email verifikasi muncul di inbox Mailtrap, dan tautannya membuka akun terverifikasi. Mailtrap Sandbox hanya menangkap email; pengiriman ke penerima nyata butuh Mailtrap Sending.
 - [ ] Webhook Poketo mengarah ke URL produksi dan rahasia tanda tangannya terisi.
 - [ ] Backup DB sebelum migrasi: `pg_dump`. Jalankan `bun run db:migrate` (0001 sampai 0005) lalu `bun run db:seed-catalog`.
 - [ ] Worker dijalankan sebagai proses terpisah dan tetap hidup (`bun run worker`).
