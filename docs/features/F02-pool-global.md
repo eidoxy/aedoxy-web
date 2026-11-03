@@ -34,7 +34,7 @@ Contoh: pool $1.000. User membeli Bulanan $20 dan memakai $12 selama 30 hari. Sa
 ## UI admin `/admin/pool`
 
 - Kartu: total, direservasi, terjual, tersedia (dalam $ dan kuota), persentase terpakai, serta perkiraan berapa paket per jenis yang masih bisa dijual.
-- Form tambah/kurangi stok: nominal $, catatan wajib, re-autentikasi 2FA.
+- Form tambah/kurangi stok: nominal $, catatan wajib. Tanpa kode 2FA per aksi (hanya sesi admin dengan 2FA); tercatat di audit.
 - Ambang "stok hampir habis" (default 10% dari total).
 - Tabel ledger dengan filter tipe dan tanggal, serta ekspor CSV.
 - Status invariant terakhir: "reserved cocok" atau "selisih N, perlu diperiksa".

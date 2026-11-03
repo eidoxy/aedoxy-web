@@ -8,7 +8,7 @@ Tandai tiap kotak dengan `[x]` bila lulus. Bila ada yang gagal, catat langkah da
 
 ### Gelombang 8 (terbaru)
 - **Pengaturan situs** di `/admin/settings` (grup Sistem). Lima bagian: Brand (nama, tagline, deskripsi), Logo dan ikon (logo, favicon, gambar OG), Identitas dan kontak (nama badan usaha, alamat, email), Pengumuman (bar atas), dan Dokumentasi (Base URL API publik, contoh Model ID).
-  - Setiap penyimpanan meminta kode 2FA atau passkey dan menulis baris `site.*` di audit.
+  - Setiap penyimpanan tidak meminta kode 2FA dan menulis baris `site.*` di audit.
   - Gambar: hanya PNG, JPEG, WebP (favicon juga ICO), diperiksa dari isi file. SVG ditolak. Disajikan lewat `/brand/logo`, `/brand/favicon`, `/brand/og` dengan ETag.
   - Nama brand, logo, favicon, footer, 404, halaman auth, email, bar pengumuman, dan tiga placeholder legal (badan usaha, alamat, email kontak) membaca dari pengaturan ini.
   - Tetap statis: issuer TOTP dan nama passkey "Aedoxy", teks tombol "Aedoxy" di login console.
@@ -52,8 +52,8 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 ### B2. Pengaturan situs `/admin/settings`
 - [ ] Sebagai user biasa, `/admin/settings` menjawab 404 tanpa label menu admin.
 - [ ] Sebagai admin penuh, menu "Pengaturan situs" ada di grup Sistem.
-- [ ] Ubah nama brand tanpa mengisi kode 2FA: ditolak dan data tidak berubah.
-- [ ] Ubah nama brand dengan kode 2FA benar: tersimpan. Dalam kira-kira 30 detik, navbar, footer, judul tab, `/login`, dan `/docs` memakai nama baru. Baris `site.brand` ada di `/admin/audit`.
+- [ ] Form tidak punya kolom "Kode 2FA" atau tombol "Gunakan passkey".
+- [ ] Ubah nama brand: tersimpan tanpa kode. Dalam kira-kira 30 detik, navbar, footer, judul tab, `/login`, dan `/docs` memakai nama baru. Baris `site.brand` ada di `/admin/audit`.
 - [ ] Unggah logo PNG: tampil di navbar terang dan gelap. Unggah file `.svg`: ditolak. Ganti ekstensi file teks menjadi `.png` lalu unggah: ditolak.
 - [ ] Unggah file lebih dari 2 MB: muncul pesan yang jelas, bukan layar error.
 - [ ] Favicon: tab browser berubah setelah hard refresh. `/brand/favicon` mengembalikan gambar dan `/brand/logo` menjawab 304 pada permintaan kedua (header `If-None-Match`).
@@ -70,6 +70,20 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 - [ ] Sudah masuk lalu buka `/login`: dialihkan ke `/dashboard`.
 - [ ] `/login?callbackURL=//evil.example` setelah masuk jatuh ke `/dashboard`.
 - [ ] Setelah login, buka `/api/orders` dengan akun lain: hanya order milik sendiri yang terlihat.
+
+### B3a. Kode 2FA hanya untuk kredensial
+- [ ] Ubah harga paket, simpan promo, tambah/kurangi stok pool, coba lagi fulfillment: tidak ada kolom kode 2FA, dan aksi langsung tersimpan. Dialog "Hentikan promo" dan "Nonaktifkan paket" tetap meminta konfirmasi tanpa kode.
+- [ ] Di `/admin/security`, buat ulang kode cadangan, tambah passkey, dan atur ulang 2FA tetap meminta kode 2FA (atau passkey).
+
+### B3b. Pengguna `/admin/users`
+- [ ] Menu "Pengguna" ada di grup Sistem, sebelum "Audit log". Admin tanpa 2FA hanya melihat "Keamanan".
+- [ ] Cari dengan username, email, dan nama. Ketik `%` atau `_` di kolom cari: dianggap teks biasa. Filter peran, status, email terverifikasi, dan console bekerja; halaman kedua muncul bila lebih dari 25 pengguna.
+- [ ] Tabel muat di layar 390 px tanpa halaman bergeser ke samping (tabel menggulir di dalam kartu).
+- [ ] Detail pengguna: metode login hanya berupa nama (password, google, github), tanpa token atau hash. Id ngawur menampilkan 404.
+- [ ] Blokir pengguna uji dengan alasan: sesinya keluar, halaman masuk menampilkan alasan, status console menjadi "Dinonaktifkan di console", baris `user.ban` ada di audit dengan nama admin. Buka blokir mengembalikan semuanya.
+- [ ] Blokir admin lain yang juga admin di console: halaman melaporkan console menolak (409); blokir di web tetap berlaku.
+- [ ] Di akun sendiri: tombol blokir dan ubah peran tidak ada. Menurunkan admin terakhir ditolak.
+- [ ] "Keluarkan dari semua perangkat": perangkat pengguna uji harus masuk lagi.
 
 ### B4. Pembelian dan paket (regresi)
 - [ ] `/plans`: tab Semua, Mingguan, Bulanan menyaring, Harian menampilkan pesan kosong.

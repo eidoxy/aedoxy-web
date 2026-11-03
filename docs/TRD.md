@@ -309,7 +309,7 @@ Hanya satu instance worker yang berjalan. `SKIP LOCKED` tetap aman jika nanti di
 
 - **Secret** hanya di environment variable server: `POKETO_SECRET_KEY`, `POKETO_WEBHOOK_SECRET`, `NEWAPI_BRIDGE_TOKEN`, `BETTER_AUTH_SECRET`, `DATABASE_URL`, dan kunci OAuth. `env.ts` menolak start bila ada yang kosong. Ini mencegah kelas bug CVE-2026-41432 (webhook dengan secret kosong).
 - **Webhook**: verifikasi HMAC atas body mentah, tolak timestamp lama, konfirmasi ke API Poketo, cocokkan nominal dengan order.
-- **Admin**: peran `admin` + 2FA wajib. Re-autentikasi untuk mengubah pool, harga, dan diskon. Semua perubahan masuk `admin_audit_log`.
+- **Admin**: peran `admin` + 2FA wajib untuk membuka panel. Kode 2FA atau bukti passkey segar hanya diminta untuk mengganti kredensial di `/admin/security` (kode cadangan, passkey, reset 2FA). Perubahan konfigurasi (pool, harga, promo, pengaturan situs, kurs, pengguna, dan lainnya) hanya dijaga oleh sesi admin yang sudah login dengan 2FA, tanpa kode per aksi. Semua perubahan masuk `admin_audit_log`. Halaman `/admin/users` memblokir pengguna, mengubah peran (bukan diri sendiri, bukan admin terakhir), dan mencabut sesi; ban memakai satu implementasi dengan skrip `ban-user`.
 - **Bridge**: token dengan scope minimum, endpoint diblokir di Caddy, dan dipanggil lewat jaringan internal. Token access New API punya masa berlaku (default 30 hari, `AccessTokenDefaultExpiryDays`), jadi siapkan rotasi dan alert sebelum kedaluwarsa.
 - **Abuse**: rate limit untuk pembuatan order dan endpoint auth, batas order pending per user, verifikasi email sebelum membeli.
 - **OIDC provider**: PKCE, redirect URI persis (hanya callback ai.aedoxy.com), masa berlaku token singkat. Ikuti panduan keamanan Better Auth dan OWASP ASVS untuk alur auth.
