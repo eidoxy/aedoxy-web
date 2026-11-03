@@ -32,7 +32,7 @@ sudo docker compose run --rm migrate            # migrasi web
 sudo docker compose run --rm migrate node scripts/seed-oauth-client.js   # mencetak CONSOLE_OIDC_CLIENT_SECRET sekali
 ```
 
-`GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` opsional: kosongkan keduanya untuk menonaktifkan masuk dengan Google (isi keduanya atau tidak sama sekali; salah satu saja ditolak saat start). Email memakai SMTP: isi `EMAIL_SERVER_URL` (URL SMTP nodemailer, mis. `smtp://api:TOKEN@live.smtp.mailtrap.io:587`, kredensial di-URL-encode) dan `EMAIL_FROM`. Mailtrap Sandbox hanya menangkap email dan tidak mengirim ke penerima nyata; pakai Mailtrap Sending untuk pengiriman sungguhan. Isi rahasia ini hanya di `.env` di VPS.
+`GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` opsional: kosongkan keduanya untuk menonaktifkan masuk dengan Google (isi keduanya atau tidak sama sekali; salah satu saja ditolak saat start). Email memakai SMTP, lihat bagian [Email](#email). Isi rahasia hanya di `.env` di VPS.
 
 `GITHUB_CLIENT_ID` dan `GITHUB_CLIENT_SECRET` juga opsional dengan aturan pasangan yang sama; tombol "Masuk dengan GitHub" hanya muncul bila keduanya terisi. Membuat GitHub OAuth App: GitHub > Settings > Developer settings > OAuth Apps > New OAuth App. Isi Homepage URL `https://aedoxy.com` dan Authorization callback URL `https://aedoxy.com/api/auth/callback/github` (Better Auth memasang `/callback/:id` di bawah `/api/auth`). Scope yang diminta aplikasi: `read:user user:email`. Salin Client ID, lalu Generate a new client secret, dan isi keduanya di `.env` VPS. Akun GitHub hanya dipakai untuk masuk atau ditautkan bila emailnya terverifikasi di GitHub.
 
@@ -55,6 +55,44 @@ sudo docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_
 ```
 
 Image Postgres dipatok ke `postgres:15` agar cocok dengan volume `pg_data` instalasi gateway yang sudah ada. Redis dibatasi `maxmemory 96mb` dengan eviction LRU supaya muat di `mem_limit` 128m.
+
+## Email
+
+Isi kolom `EMAIL_SMTP_*` di `.env` (diutamakan) atau, sebagai alternatif, satu `EMAIL_SERVER_URL` (URL SMTP nodemailer, kredensial di-URL-encode). Salah satu wajib saat `ENV_STRICT=true`; bila `EMAIL_SMTP_HOST` terisi, `EMAIL_SERVER_URL` diabaikan. `EMAIL_FROM` wajib. Beri kutip bila ada spasi atau tanda `<>`: `EMAIL_FROM="Aedoxy <no-reply@aedoxy.com>"`.
+
+Pemetaan dari halaman email di console gateway:
+
+| Console gateway | Variabel |
+|---|---|
+| SMTPServer | `EMAIL_SMTP_HOST` |
+| SMTPPort | `EMAIL_SMTP_PORT` |
+| SMTPAccount | `EMAIL_SMTP_USER` |
+| SMTPToken | `EMAIL_SMTP_PASSWORD` |
+| SSL aktif | `EMAIL_SMTP_TLS=ssl` (port 465) |
+| SSL mati | `EMAIL_SMTP_TLS=starttls` (port 587, TLS wajib) |
+
+`EMAIL_SMTP_USER` dan `EMAIL_SMTP_PASSWORD` diisi berpasangan atau dikosongkan keduanya. `EMAIL_SMTP_TLS=none` hanya untuk server uji lokal dan ditolak saat `ENV_STRICT=true`.
+
+Preset Mailtrap:
+
+| Preset | Host | Port | User | Password | Catatan |
+|---|---|---|---|---|---|
+| Sending | `live.smtp.mailtrap.io` | 587 | `api` | token API | Domain pengirim harus terverifikasi di Mailtrap, dan `EMAIL_FROM` memakai domain itu. |
+| Sandbox | `sandbox.smtp.mailtrap.io` | 2525 | user inbox | password inbox | Hanya menangkap email, tidak mengirim ke penerima nyata. |
+
+Uji kirim setelah mengisi `.env`:
+
+```sh
+sudo docker compose run --rm migrate node scripts/send-test-email.js alamat@contoh.com
+```
+
+Skrip mencetak `terkirim` atau `send-test-email failed: SMTP send failed (<kode> <kode respons>)` dan keluar dengan kode 0 atau 1. Contoh: `EAUTH 535` kredensial salah, `EENVELOPE 550` pengirim atau penerima ditolak (domain pengirim belum terverifikasi), `ESOCKET`/`ETIMEDOUT` host atau port tidak terjangkau. Pesan tidak memuat host, kredensial, atau alamat penerima.
+
+Kegagalan kirim saat aplikasi berjalan tercatat sebagai `[auth] email failed reason=...` dengan kode yang sama:
+
+```sh
+sudo docker compose logs web | grep "email failed"
+```
 
 ## Perintah operator
 

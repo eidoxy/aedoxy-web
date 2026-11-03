@@ -103,11 +103,12 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 ### Sebelum deploy
 - [ ] Ganti password default `123456` di `gateway-aedoxy/docker-compose.yml`.
 - [ ] `Caddyfile` masih memuat `ai.obersa.my.id`. Ganti ke domain Aedoxy.
-- [ ] Env produksi terisi, dengan `ENV_STRICT=true` dan tanpa `EMAIL_DEV_OUTBOX`: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, `NEWAPI_PUBLIC_URL`, `NEWAPI_INTERNAL_URL`, `NEWAPI_BRIDGE_TOKEN`, `EMAIL_SERVER_URL`, kredensial Poketo.
+- [ ] Env produksi terisi, dengan `ENV_STRICT=true` dan tanpa `EMAIL_DEV_OUTBOX`: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, `NEWAPI_PUBLIC_URL`, `NEWAPI_INTERNAL_URL`, `NEWAPI_BRIDGE_TOKEN`, `EMAIL_FROM`, `EMAIL_SMTP_HOST` (atau `EMAIL_SERVER_URL`), kredensial Poketo.
 - [ ] Token bridge `aedoxy-bridge` dibuat dengan lima scope: `user:read`, `user:write`, `billing:read`, `billing:write`, `group:read`.
 - [ ] `ServerAddress` di New API sama persis dengan `NEWAPI_PUBLIC_URL`. Jalankan `bun run db:seed-oauth` setelah itu.
 - [ ] Penyedia email dipilih dan email verifikasi terkirim ke kotak masuk nyata.
-- [ ] Dengan `EMAIL_SERVER_URL` Mailtrap terisi: daftar akun baru, email verifikasi muncul di inbox Mailtrap, dan tautannya membuka akun terverifikasi. Mailtrap Sandbox hanya menangkap email; pengiriman ke penerima nyata butuh Mailtrap Sending.
+- [ ] Uji SMTP: `sudo docker compose run --rm migrate node scripts/send-test-email.js alamat@contoh.com` mencetak `terkirim` (kode keluar 0) dan email uji tiba di inbox. Bila gagal, kodenya (mis. `EAUTH 535`) menunjuk penyebab; lihat `deploy/README.md` bagian Email.
+- [ ] Dengan `EMAIL_SMTP_*` (atau `EMAIL_SERVER_URL`) Mailtrap terisi: daftar akun baru, email verifikasi muncul di inbox Mailtrap, dan tautannya membuka akun terverifikasi. Mailtrap Sandbox hanya menangkap email; pengiriman ke penerima nyata butuh Mailtrap Sending.
 - [ ] Webhook Poketo mengarah ke URL produksi dan rahasia tanda tangannya terisi.
 - [ ] Backup DB sebelum migrasi: `pg_dump`. Jalankan `bun run db:migrate` (0001 sampai 0005) lalu `bun run db:seed-catalog`.
 - [ ] Worker dijalankan sebagai proses terpisah dan tetap hidup (`bun run worker`).
