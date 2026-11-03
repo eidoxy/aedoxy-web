@@ -10,26 +10,33 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
-    .$onUpdate(() => new Date())
-    .notNull(),
-  twoFactorEnabled: boolean("two_factor_enabled").default(false),
-  role: text("role"),
-  banned: boolean("banned").default(false),
-  banReason: text("ban_reason"),
-  banExpires: timestamp("ban_expires"),
-  newapiUserId: integer("newapi_user_id").unique(),
-  feedVisibility: text("feed_visibility").default("masked"),
-  /** F07 opt-out, read straight from the table (not a Better Auth field). `feed_visibility` above is unused. */
-  showActivity: boolean("show_activity").default(true).notNull(),
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    image: text("image"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+    twoFactorEnabled: boolean("two_factor_enabled").default(false),
+    role: text("role"),
+    banned: boolean("banned").default(false),
+    banReason: text("ban_reason"),
+    banExpires: timestamp("ban_expires"),
+    newapiUserId: integer("newapi_user_id").unique(),
+    feedVisibility: text("feed_visibility").default("masked"),
+    /** F07 opt-out, read straight from the table (not a Better Auth field). `feed_visibility` above is unused. */
+    showActivity: boolean("show_activity").default(true).notNull(),
+    /** Better Auth username plugin. Lowercase `a-z0-9_`, 3 to 20 chars; null for accounts created before usernames existed. */
+    username: text("username"),
+    displayUsername: text("display_username"),
+  },
+  (table) => [uniqueIndex("user_username_uidx").on(table.username)],
+);
 
 export const session = pgTable(
   "session",

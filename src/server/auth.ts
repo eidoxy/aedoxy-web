@@ -5,7 +5,9 @@ import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins/admin";
 import { jwt } from "better-auth/plugins/jwt";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { username } from "better-auth/plugins/username";
 import { env } from "@/env";
+import { isValidUsername, USERNAME_MAX, USERNAME_MIN } from "@/lib/username";
 import { ensureConsoleAccountForUser } from "@/server/account";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
@@ -15,6 +17,7 @@ import { PASSKEY_PATHS_CLOSED_OVER_HTTP, passkeyGate, passkeyPlugin } from "@/se
 import { sessionOptions } from "@/server/session-config";
 import { sessionTrust } from "@/server/session-trust-plugin";
 import { getBrandName } from "@/server/site";
+import { assignGeneratedUsername } from "@/server/username";
 
 const isProd = env.NODE_ENV === "production";
 const baseURL = env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_SITE_URL;
@@ -25,6 +28,16 @@ async function linkConsoleAccount(userId: string) {
     await ensureConsoleAccountForUser(userId);
   } catch (err) {
     console.error(`[auth] console account link failed user=${userId} reason=${err instanceof Error ? err.message : "unknown"}`);
+  }
+}
+
+/** Best effort: a user without a username can still sign in by email, so a failure here must not fail sign-up. */
+async function generateUsername(user: { id: string; email: string; displayUsername?: string | null }) {
+  try {
+    const chosen = await assignGeneratedUsername(user.id, user.displayUsername || user.email.split("@")[0]);
+    if (!chosen) console.error(`[auth] username not assigned user=${user.id} reason=no free name`);
+  } catch (err) {
+    console.error(`[auth] username assignment failed user=${user.id} reason=${err instanceof Error ? err.message : "unknown"}`);
   }
 }
 
@@ -47,7 +60,7 @@ export const auth = betterAuth({
   // The three /two-factor paths only need the password over HTTP; the admin security actions call the same
   // handlers through auth.api after also checking a fresh 2FA code, so the HTTP routes are closed (auth.api is unaffected).
   // Same for deleting or renaming a passkey: the admin security actions do it and write the audit row.
-  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", ...PASSKEY_PATHS_CLOSED_OVER_HTTP],
+  disabledPaths: ["/token", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", ...PASSKEY_PATHS_CLOSED_OVER_HTTP, "/is-username-available"],
 
   user: {
     validateUserInfo: rejectUnverifiedOAuthEmail,
@@ -81,10 +94,13 @@ export const auth = betterAuth({
   },
 
   // Google sign-ups arrive with a verified email, so link them on creation.
+  // Users that arrive without a username (Google, GitHub) get one generated here, after the insert, so that the unique index
+  // settles name collisions between concurrent sign-ups. The GitHub login travels in displayUsername (see mapProfileToUser).
   databaseHooks: {
     user: {
       create: {
         after: async (user) => {
+          if (!(user as { username?: string | null }).username) await generateUsername(user);
           if (user.emailVerified) await linkConsoleAccount(user.id);
         },
       },
@@ -93,7 +109,15 @@ export const auth = betterAuth({
 
   socialProviders: {
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }),
-    ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET && { github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET } }),
+    ...(env.GITHUB_CLIENT_ID &&
+      env.GITHUB_CLIENT_SECRET && {
+        github: {
+          clientId: env.GITHUB_CLIENT_ID,
+          clientSecret: env.GITHUB_CLIENT_SECRET,
+          // Carries the GitHub login to the create-user hook, which turns it into the username.
+          mapProfileToUser: (profile: { login: string }) => ({ displayUsername: profile.login }),
+        },
+      }),
   },
 
   // A social login joins the existing user with the same email. Better Auth still requires that user's email to be verified
@@ -111,6 +135,7 @@ export const auth = betterAuth({
     max: 100,
     customRules: {
       "/sign-in/email": { window: 60, max: 5 },
+      "/sign-in/username": { window: 60, max: 5 },
       "/sign-up/email": { window: 60, max: 3 },
       "/request-password-reset": { window: 60, max: 3 },
       "/send-verification-email": { window: 60, max: 3 },
@@ -124,6 +149,16 @@ export const auth = betterAuth({
       // Required by the plugin's types; the console client skips consent, so this page is never reached.
       consentPage: "/consent",
       scopes: ["openid", "profile", "email"],
+    }),
+    // Usernames are stored and matched lowercase. The validator runs after normalization, so "Ada_1" is accepted as "ada_1".
+    // /is-username-available is closed (disabledPaths): nothing in the UI calls it and it would be an unauthenticated lookup oracle.
+    username({
+      minUsernameLength: USERNAME_MIN,
+      maxUsernameLength: USERNAME_MAX,
+      usernameValidator: isValidUsername,
+      displayUsernameNormalization: (value) => value.toLowerCase(),
+      displayUsernameValidator: isValidUsername,
+      validationOrder: { username: "post-normalization", displayUsername: "post-normalization" },
     }),
     twoFactor({ issuer: "Aedoxy" }),
     passkeyPlugin(baseURL),
