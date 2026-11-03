@@ -129,14 +129,25 @@ export const auth = betterAuth({
 
   session: sessionOptions,
 
-  advanced: { useSecureCookies: isProd },
+  advanced: {
+    useSecureCookies: isProd,
+    // Production traffic only arrives through the Cloudflare Tunnel, which sets cf-connecting-ip; x-forwarded-for is client-writable there.
+    // Without a usable address Better Auth does not skip the limit: it counts one shared "no-trusted-ip|<path>" bucket.
+    ipAddress: { ipAddressHeaders: isProd ? ["cf-connecting-ip"] : ["cf-connecting-ip", "x-forwarded-for"] },
+  },
 
-  // shortcut: in-memory counters are per process; move to storage "database" when running more than one instance.
+  // Stored in Postgres (table rate_limit) so counters survive restarts and are shared between instances.
   rateLimit: {
     enabled: true,
+    storage: "database",
     window: 60,
     max: 100,
     customRules: {
+      // The console (gateway) calls these server-to-server from this site's own public IP, so every console login
+      // shares ONE bucket per path. The default 100/min would lock all console users out together.
+      "/oauth2/token": { window: 60, max: 600 },
+      "/oauth2/userinfo": { window: 60, max: 600 },
+      "/jwks": { window: 60, max: 600 },
       "/sign-in/email": { window: 60, max: 5 },
       "/sign-in/username": { window: 60, max: 5 },
       "/sign-up/email": { window: 60, max: 3 },

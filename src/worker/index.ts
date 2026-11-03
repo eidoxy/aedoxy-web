@@ -11,6 +11,7 @@ import { linkConsoleAccounts } from "@/server/domain/link-console-accounts";
 import { retryUnsyncedPlans } from "@/server/domain/plan-sync";
 import { checkPoolInvariant } from "@/server/domain/pool-invariant";
 import { sweepPendingOrders } from "@/server/domain/order-sweeper";
+import { deleteExpiredRateLimits } from "@/server/rate-limit";
 import { reconcileExpiredGrants } from "@/server/domain/reconcile";
 import { runLoop, type WorkerTask } from "./loop";
 
@@ -34,6 +35,8 @@ const tasks: WorkerTask[] = [
   { name: "plan-sync-retry", everyMs: 60 * MINUTE, run: () => retryUnsyncedPlans() },
   // Checks every 5 minutes whether the newest quote is older than fx_settings.refresh_hours; only then it fetches.
   { name: "fx-refresh", everyMs: 5 * MINUTE, run: () => refreshFxIfDue() },
+  // Keeps rate_limits and Better Auth's rate_limit small (counters older than an hour, at most 5000 rows per table per run).
+  { name: "rate-limit-cleanup", everyMs: 60 * MINUTE, run: () => deleteExpiredRateLimits() },
 ];
 
 const controller = new AbortController();
