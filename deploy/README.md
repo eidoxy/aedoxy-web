@@ -120,6 +120,8 @@ Alasan ban ditampilkan ke pengguna di halaman masuk ("Akun Anda diblokir. Alasan
 
 `ban-user` mencetak `console: dinonaktifkan` bila console sudah mengikuti, atau `console: tertunda, worker akan mengulang` bila bridge gagal (ban tetap berlaku di aedoxy.com, worker `sync-console-status` mengulang tiap menit). Admin atau Root di console dilindungi bridge (HTTP 409): ban tetap tercatat, tetapi akun console-nya tidak dinonaktifkan dan worker mencatat `protected:http:409` tiap menit sampai peran itu diturunkan di console.
 
+Pengguna biasa dikelola dari `/admin/users` (blokir, peran, sesi, nama tampilan, atur kata sandi, reset 2FA dan passkey, hapus akun) tanpa terminal VPS; perintah di atas tetap ada sebagai cadangan, misalnya saat web tidak bisa dibuka. Hapus akun menghapus data pribadi dan menonaktifkan akun console, tetapi tidak menghapus catatan pengguna di console: admin console menghapusnya manual bila perlu.
+
 `SEED_OAUTH_OUT=<path>` menulis rahasia ke berkas, `SEED_OAUTH_OUT=-` memaksa stdout. Rahasia hanya muncul sekali saat klien dibuat (tersimpan sebagai hash).
 
 Mematikan login dan daftar password di console gateway tanpa mengunci root: ikuti [RUNBOOK-CONSOLE-SSO.md](RUNBOOK-CONSOLE-SSO.md).

@@ -85,6 +85,18 @@ Prasyarat lokal: Postgres dev jalan, `bun run build` lalu jalankan web (`:3000`)
 - [ ] Di akun sendiri: tombol blokir dan ubah peran tidak ada. Menurunkan admin terakhir ditolak.
 - [ ] "Keluarkan dari semua perangkat": perangkat pengguna uji harus masuk lagi.
 
+### B3d. Kelola akun pengguna (gelombang 9h)
+Migrasi `0009` harus sudah berjalan. Pakai pengguna uji (bukan akun admin), dan cek tampilan di 390 px: dialog tidak meluber, fokus pindah ke dialog saat dibuka dan kembali ke tombol saat ditutup, tiap kolom punya label.
+- [ ] Kartu "Kelola akun" menampilkan kata sandi (Ada/Belum ada), passkey (jumlah), dan 2FA. Di akun sendiri kartu hanya menunjuk ke Keamanan. "Reset 2FA" mati bila pengguna tanpa 2FA, "Reset passkey" mati bila tanpa passkey.
+- [ ] Ubah nama tampilan: 1 karakter dan 81 karakter ditolak, nama valid tersimpan. Tidak ada kode 2FA, tidak ada email. Nama di console tidak ikut berubah.
+- [ ] Atur kata sandi: tanpa kode 2FA ditolak, kode salah ditolak, kode benar berhasil. "Buat acak" mengisi 20 karakter yang terlihat dan bisa disalin; ketik manual tetap tersamar. Pengguna uji masuk dengan username DAN email memakai kata sandi baru, kata sandi lama gagal, sesi lamanya keluar. Pengguna uji menerima email pemberitahuan tanpa kata sandi dan tanpa tautan. Baris `user.password.set` ada di audit tanpa kata sandi.
+- [ ] Atur kata sandi untuk pengguna yang hanya login Google/GitHub: dialog memperingatkan, setelahnya login dengan email dan kata sandi itu berhasil.
+- [ ] Atur kata sandi lewat tombol "Gunakan passkey" (tanpa mengetik kode) berhasil sekali; percobaan kedua meminta bukti baru.
+- [ ] Reset 2FA: pengguna uji yang punya 2FA kehilangan 2FA-nya, sesinya keluar, email pemberitahuan terkirim, `user.2fa.reset` ada di audit dengan nama admin. Reset passkey: semua passkey hilang, `user.passkeys.reset` mencatat jumlahnya.
+- [ ] Hapus akun: dialog menyebut bahwa akun console dinonaktifkan dan catatannya dapat dihapus manual oleh admin console, dan memperingatkan bila ada paket aktif. Ketik username salah ditolak. Pengguna dengan pesanan belum dibayar ditolak dengan pesan jelas. Akun admin ditolak. Setelah berhasil: detail pengguna menampilkan banner "dihapus" dan tanpa tombol aksi; daftar tidak lagi memuatnya kecuali filter Status "Terhapus"; akun console-nya "Dinonaktifkan di console" (cek di console gateway; bila bridge gagal, tunggu satu menit untuk worker).
+- [ ] Setelah dihapus, email dan username yang sama bisa mendaftar lagi; pesanan lama pengguna tetap terlihat di `/admin/orders` dan saldo pool tidak berubah.
+- [ ] Lebih dari 10 aksi kelola dalam satu menit: aksi ke-11 ditolak dengan "Terlalu banyak aksi".
+
 ### B3c. Batas laju bersama dan IP klien (gelombang 9d)
 Jalankan di produksi atau lewat tunnel, karena `cf-connecting-ip` hanya ada di belakang Cloudflare. Migrasi `0008` harus sudah berjalan.
 - [ ] Salah kata sandi 6 kali berturut-turut di `/login` (email sama, jendela satu menit): percobaan ke-6 mendapat HTTP 429 (cek tab Network atau `curl -i -X POST https://aedoxy.com/api/auth/sign-in/email ...`).
