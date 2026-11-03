@@ -11,6 +11,8 @@ const defaults: SiteSettings = {
   supportEmail: "",
   whatsappUrl: "",
   telegramUrl: "",
+  googleLoginEnabled: true,
+  githubLoginEnabled: true,
   announcement: { enabled: false, text: "", href: "", linkLabel: "" },
   apiBaseUrl: "https://ai.example.com",
   sampleModel: "your-model-id",
